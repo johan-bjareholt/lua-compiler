@@ -162,12 +162,47 @@ stringstream result;
 
 void namePass(Expression *tree, map<Expression*,string> &nameMap)
 {
-   // ...
+  // ...
+  auto entry = std::pair<Expression*, string>(tree, newName());
+  nameMap.insert(entry);
 }
 
 void emitPass(Expression *tree, map<Expression*,string> &nameMap, BBlock *out)
 {
   // ...
+  if (tree->left != nullptr || tree->right != nullptr){
+    namePass(tree, nameMap);
+	emitPass(tree->left, nameMap, out);
+	emitPass(tree->right, nameMap, out);
+	std::string leftstr, rightstr;
+
+	switch (tree->left->kind){
+		case 'V':
+			leftstr = tree->left->name;
+			break;
+		case 'C':
+			leftstr = to_string(tree->left->value);
+			break;
+		case 'N':
+			leftstr = nameMap[tree->left];
+			break;
+	}
+	
+	switch (tree->right->kind){
+		case 'V':
+			rightstr = tree->right->name;
+			break;
+		case 'C':
+			rightstr = to_string(tree->right->value);
+			break;
+		case 'N':
+			rightstr = nameMap[tree->right];
+			break;
+	}
+
+	ThreeAd* ta = new ThreeAd(nameMap[tree],tree->op, leftstr, rightstr);
+    out->instructions.push_back(*ta);
+  }
 }
 
 // Returns the last evaluated name
@@ -177,6 +212,7 @@ string convert(Expression *in, BBlock *out)
   // TODO: Implement the pseudo code from lec-8 / slides 11 and 12 
   //       in the empty procedures above and write the output into
   //       the target BBlock object.
+  emitPass(in, naming, out);
   return naming[in];
 }
 
@@ -185,7 +221,11 @@ string convert(Expression *in, BBlock *out)
 void convertAssign(Statement *in, BBlock *out)
 {
   // TODO: Convert the assignment statement passed in to 3-address instructions
-  //       to fill the target BBlock with. 
+  //       to fill the target BBlock with.
+  std::string name = in->expressions.at(0)->name;
+  std::string val = convert(in->expressions.at(1), out);
+  ThreeAd ta = ThreeAd(name,'c',val,val);
+  out->instructions.push_back(ta);
 }
 
 // TASK: Basically - reuse the expression translation (two bits of psuedo code get
@@ -207,6 +247,13 @@ void convertIf(Statement *in, BBlock **current)
   // TODO: Build the graph structure to implement the if statement
   //       as shown in lecture 8 / slide 22 (and 25). Update the
   //       caller's current pointer before returning.
+
+  // Translate comparitor
+  //Expression* comparitor = in->expressions.front();
+  //convertComparitor(comparitor, current);
+  // Create true and false block
+  // Set next block
+  // Set exit of true and false blocks to next block
 }
 
 void convertSeq(Statement *in, BBlock **current)

@@ -53,6 +53,29 @@ Statement *testCase =
     )
   });
 
+Statement* testCase2 =
+  Seq({
+    Assign( "x",
+            BinOp('+',
+              Variable("x"),
+              Constant(1)
+            )
+    ),
+    Assign( "y",
+            BinOp('+',
+              Variable("y"),
+              Constant(1)
+            )
+    ),
+    If( Equality( Variable("x"), Constant(0)),
+      If( Equality( Variable("y"), Constant(0)),
+        Assign("x", Constant(1)),
+        Assign("y", Constant(2))
+      ),
+      Assign("y", Constant(3))
+    )
+  });
+
 Statement *ifTest = If( Equality( Variable("x"), Constant(10)),
         Assign( "y",
                 BinOp('+',
@@ -68,13 +91,19 @@ Statement *ifTest = If( Equality( Variable("x"), Constant(10)),
         )
     );
 
+Expression *expressionTest = BinOp('+',
+			BinOp('-', Variable("x"), Variable("y")),
+			BinOp('+',Constant(2),
+				BinOp('-',Constant(5),Constant(3)))
+		);
 
 int main()
 {
   testCase->dump();
 BBlock *start = new BBlock();
 BBlock *current = start;
-  convertStatement(testCase, &current);
+  convertStatement(testCase2, &current);
+  convert(expressionTest, current);
   dumpCFG(start);
 }
 
