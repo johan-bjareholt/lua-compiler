@@ -1,4 +1,5 @@
 #include "ir.h"
+#include "convert.h"
 
 // Some simple code fragements I used when testing.
 Expression *e = BinOp('-', 
@@ -97,14 +98,24 @@ Expression *expressionTest = BinOp('+',
 				BinOp('-',Constant(5),Constant(3)))
 		);
 
+Expression *equalityTest = Equality(
+			BinOp('-', Constant(10), Constant(5)),
+			BinOp('+',Constant(2), Constant(3))
+		);
+
+
 int main()
 {
   testCase->dump();
-BBlock *start = new BBlock();
-BBlock *current = start;
-  convertStatement(testCase2, &current);
-  convert(expressionTest, current);
+  BBlock *start = new BBlock();
+  BBlock *current = start;
+  
+  convertStatement(testCase, &current);
+  //convert(expressionTest, current);
+  //convertStatement(ifTest, &current);
   dumpCFG(start);
+  
+  outMainBlock(*start);
 }
 
 

@@ -9,6 +9,8 @@
    up to your assignment instead of defining a more appropriate class hierarchy
    for your parse trees.
 */
+#pragma once
+
 #include<string>
 #include<iostream>
 #include<sstream>

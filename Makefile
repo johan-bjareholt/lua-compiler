@@ -1,5 +1,5 @@
 NAME=lua
-SRC=main.cc ir.cc
+SRC=main.cc ir.cc convert.cc
 CPPFLAGS= --std=c++11 -g
 
 all:

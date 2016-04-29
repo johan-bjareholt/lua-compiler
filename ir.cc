@@ -162,45 +162,34 @@ stringstream result;
 
 void namePass(Expression *tree, map<Expression*,string> &nameMap)
 {
-  // ...
-  auto entry = std::pair<Expression*, string>(tree, newName());
+  std::string name;
+  if (tree->left != nullptr && tree->right != nullptr){
+	  namePass(tree->left, nameMap);
+	  namePass(tree->right, nameMap);
+	  name = newName();
+  }
+  else {
+    if (tree->name == "")
+      name = to_string(tree->value);
+	else
+      name = tree->name;
+  }
+  
+  auto entry = std::pair<Expression*, string>(tree, name);
   nameMap.insert(entry);
 }
 
 void emitPass(Expression *tree, map<Expression*,string> &nameMap, BBlock *out)
 {
   // ...
-  if (tree->left != nullptr || tree->right != nullptr){
-    namePass(tree, nameMap);
-	emitPass(tree->left, nameMap, out);
-	emitPass(tree->right, nameMap, out);
-	std::string leftstr, rightstr;
-
-	switch (tree->left->kind){
-		case 'V':
-			leftstr = tree->left->name;
-			break;
-		case 'C':
-			leftstr = to_string(tree->left->value);
-			break;
-		case 'N':
-			leftstr = nameMap[tree->left];
-			break;
-	}
-	
-	switch (tree->right->kind){
-		case 'V':
-			rightstr = tree->right->name;
-			break;
-		case 'C':
-			rightstr = to_string(tree->right->value);
-			break;
-		case 'N':
-			rightstr = nameMap[tree->right];
-			break;
-	}
-
-	ThreeAd* ta = new ThreeAd(nameMap[tree],tree->op, leftstr, rightstr);
+  if (tree->kind == 'N'){
+    emitPass(tree->left, nameMap, out);
+    emitPass(tree->right, nameMap, out);
+	ThreeAd* ta = new ThreeAd(
+      nameMap[tree],
+	  tree->op, nameMap[tree->left],
+	  nameMap[tree->right]
+    );
     out->instructions.push_back(*ta);
   }
 }
@@ -212,6 +201,7 @@ string convert(Expression *in, BBlock *out)
   // TODO: Implement the pseudo code from lec-8 / slides 11 and 12 
   //       in the empty procedures above and write the output into
   //       the target BBlock object.
+  namePass(in, naming);
   emitPass(in, naming, out);
   return naming[in];
 }
@@ -234,6 +224,14 @@ void convertComparitor(Expression *in, BBlock *out)
 {
   // TODO: Convert the expression tree with a root comparitor operation into
   //       3-address instructions and fill the target BBlock.
+  std::string l = convert(in->left, out);
+  std::string r = convert(in->right, out);
+  //std::cout << "left:" << l << std::endl;
+  //std::cout << "right:" << r << std::endl;
+  //std::string name = convert(in, out);
+  std::string name = newName();
+  ThreeAd ta = ThreeAd(name,'=',l,r);
+  out->instructions.push_back(ta);
 }
 
 void convertStatement(Statement *in, BBlock **current);
@@ -249,11 +247,23 @@ void convertIf(Statement *in, BBlock **current)
   //       caller's current pointer before returning.
 
   // Translate comparitor
-  //Expression* comparitor = in->expressions.front();
-  //convertComparitor(comparitor, current);
+  Expression* comparitor = in->expressions.back();
+  convertComparitor(comparitor, *current);
+  
   // Create true and false block
-  // Set next block
-  // Set exit of true and false blocks to next block
+  BBlock* trueBlock = new BBlock();
+  convertStatement(in->children.at(0), &trueBlock);
+  (*current)->trueExit = trueBlock;
+  
+  BBlock* falseBlock = new BBlock();
+  convertStatement(in->children.at(1), &falseBlock);
+  (*current)->falseExit = falseBlock;
+  
+  BBlock* nextBlock = new BBlock();
+  trueBlock->trueExit = nextBlock;
+  falseBlock->trueExit = nextBlock;
+
+  *current = nextBlock;
 }
 
 void convertSeq(Statement *in, BBlock **current)
