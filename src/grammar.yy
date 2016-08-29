@@ -55,8 +55,17 @@
 %type <std::string> fieldsep
 
 %type <Expression*> string
-%type <std::string> binop
-%type <std::string> unop
+
+%type <Expression*> op
+%type <Expression*> op_1
+%type <Expression*> op_2
+%type <Expression*> op_3
+%type <Expression*> op_4
+%type <Expression*> op_5
+%type <Expression*> op_6
+%type <Expression*> op_7
+%type <Expression*> op_8
+%type <Expression*> op_9
 
 %token <std::string> DO
 %token <std::string> WHILE
@@ -85,11 +94,28 @@
 %token <std::string> TDOT
 %token <std::string> NAME
 
-%token <std::string> BINOP
-%token <std::string> UNOP
-%token <std::string> MINUS
+%token <char> PLUS
+%token <char> MINUS
+%token <char> TIMES
+%token <char> DIVIDE
+%token <char> POWER
+%token <char> MODULO
 
-%token <std::string> EQUALS
+%token <char> EQUALS
+%token <char> LESS_THAN
+%token <char> MORE_THAN
+%token <char> LESS_EQUAL_THAN
+%token <char> MORE_EQUAL_THAN
+%token <char> TILDE_EQUAL
+
+%token <char> AND
+%token <char> OR
+%token <char> SQUARE
+%token <char> NOT
+
+%token <char> APPEND
+
+%token <std::string> ASSIGN
 %token <std::string> DOT
 %token <std::string> COLON
 %token <std::string> COMMA
@@ -165,7 +191,7 @@ laststat: RETURN explist optsemi {
 		}
 		;
 
-stat	: namelist EQUALS explist {
+stat	: namelist ASSIGN explist {
 			$$ = new Statement('S');
 			int items = $1.size();
 			for (int i=0; i<items; i++){
@@ -174,7 +200,7 @@ stat	: namelist EQUALS explist {
 				$3.pop_front();
 			}
 		}
-		| LOCAL namelist EQUALS explist {
+		| LOCAL namelist ASSIGN explist {
 			$$ = new Statement('S');
 			int items = $2.size();
 			for (int i=0; i<items; i++){
@@ -221,14 +247,14 @@ stat	: namelist EQUALS explist {
 			$$ = $1;
 		}
 		/*
-		| FOR name EQUALS exp COMMA exp DO block END {
+		| FOR name ASSIGN exp COMMA exp DO block END {
 			$$ = Node("for","2var");
 			$$.children.push_back($2);
 			$$.children.push_back($4);
 			$$.children.push_back($6);
 			$$.children.push_back($8);
 		}
-		| FOR name EQUALS exp COMMA exp COMMA exp DO block END {
+		| FOR name ASSIGN exp COMMA exp COMMA exp DO block END {
 			$$ = Node("for","3var");
 			$$.children.push_back($2);
 			$$.children.push_back($4);
@@ -244,10 +270,10 @@ stat	: namelist EQUALS explist {
 		}*/
 	 	;
 
-forblock: FOR NAME EQUALS exp COMMA exp DO block END {
+forblock: FOR NAME ASSIGN exp COMMA exp DO block END {
 			$$ = For($2, $4, $6, Constant(1), $8);
 	 	}
-		| FOR NAME EQUALS exp COMMA exp COMMA exp DO block END {
+		| FOR NAME ASSIGN exp COMMA exp COMMA exp DO block END {
 			$$ = For($2, $4, $8, $6, $10);
 		}
 		| FOR namelist IN explist DO block END {
@@ -404,11 +430,8 @@ exp		: NIL {
 			//$$ = Node("exp","tableconstructor");
 			//$$.children.push_back($1);
 		}
-		| exp binop exp {
-			$$ = BinOp($2[0], $1, $3);
-		}
-		| unop exp {
-			$$ = UnOp($1[0], $2);
+		| op {
+			$$ = $1;
 		}
 		;
 
@@ -522,12 +545,12 @@ tableconstructor: BRACES_L fieldlist BRACES_R {
 		}
 		;
 
-field	: BRACKET_L exp BRACKET_R EQUALS exp {
+field	: BRACKET_L exp BRACKET_R ASSIGN exp {
 	  		//$$ = Node("field","bracketequals");
 			//$$.children.push_back($2);
 			//$$.children.push_back($5);
 	  	}
-		| NAME EQUALS exp {
+		| NAME ASSIGN exp {
 			//$$ = Node("field","equals");
 			//$$.children.push_back($1);
 			//$$.children.push_back($3);
@@ -572,22 +595,111 @@ string	: STRING {
 	   	}
 		;
 
-binop	: BINOP {
-	 		$$ = $1;
-	  		//$$ = Node("binop", $1);
-	  	}
-		| MINUS {
-	 		$$ = $1;
-			//$$ = Node("binop", $1);
-		}
-		;
 
-unop	: UNOP {
-	 		$$ = $1;
-	 		//$$ = Node("unop", $1);
-	 	}
-		| MINUS {
-	 		$$ = $1;
-			//$$ = Node("unop", $1);
-		}
-		;
+/*
+    Operator Priority
+*/
+
+op      : op_1 {
+            $$ = $1;
+        }
+        ;
+
+op_1    : op_1 OR op_2 {
+			$$ = BinOp($2, $1, $3);
+        }
+        | op_2 {
+            $$ = $1;
+        }
+        ;
+
+op_2    : op_2 AND op_3 {
+			$$ = BinOp($2, $1, $3);
+        }
+        | op_3 {
+            $$ = $1;
+        }
+        ;
+
+op_3    : op_3 LESS_THAN op_4 {
+			$$ = BinOp($2, $1, $3);
+        }
+        | op_3 LESS_EQUAL_THAN op_4 {
+			$$ = BinOp($2, $1, $3);
+        }
+        | op_3 MORE_THAN op_4 {
+			$$ = BinOp($2, $1, $3);
+        }
+        | op_3 MORE_EQUAL_THAN op_4 {
+			$$ = BinOp($2, $1, $3);
+        }
+        | op_3 TILDE_EQUAL op_4 {
+			$$ = BinOp($2, $1, $3);
+        }
+        | op_3 EQUALS op_4 {
+			$$ = BinOp($2, $1, $3);
+        }
+        | op_4 {
+            $$ = $1;
+        }
+        ;
+
+op_4    : op_4 APPEND op_5 {
+			$$ = BinOp($2, $1, $3);
+        }
+        | op_5 {
+            $$ = $1;
+        }
+        ;
+
+op_5    : op_5 PLUS op_6 {
+			$$ = BinOp($2, $1, $3);
+        }
+        | op_5 MINUS op_6 {
+			$$ = BinOp($2, $1, $3);
+        }
+        | op_6 {
+            $$ = $1;
+        }
+        ;
+
+op_6    : op_6 TIMES op_7 {
+			$$ = BinOp($2, $1, $3);
+        }
+        | op_6 DIVIDE op_7 {
+			$$ = BinOp($2, $1, $3);
+        } 
+        | op_6 MODULO op_7 {
+			$$ = BinOp($2, $1, $3);
+        } 
+        | op_7 {
+            $$ = $1;
+        }
+        ;
+
+op_7    : NOT op_8 {
+			$$ = UnOp($1, $2);
+        } 
+        | SQUARE op_8 {
+			$$ = UnOp($1, $2);
+        } 
+        | MINUS op_8 {
+			$$ = UnOp($1, $2);
+        } 
+        | op_8 {
+            $$ = $1;
+        }
+        ;
+
+op_8    : op_8 POWER op_9 {
+			$$ = BinOp($2, $1, $3);
+        }
+        | op_9 {
+            $$ = $1;
+        }
+        ;
+
+op_9    : exp {
+            $$ = $1;
+        }
+        ;

@@ -1,5 +1,6 @@
 %top{
     #include "grammar.tab.hh"
+    #include "ops.h"
 	#include "globals.h"
     #define YY_DECL yy::parser::symbol_type yylex()
 
@@ -36,10 +37,26 @@ then									{ log("then", yytext); return yy::parser::make_THEN(yytext); }
 elseif									{ log("elseif", yytext); return yy::parser::make_ELSEIF(yytext); }
 else									{ log("else", yytext); return yy::parser::make_ELSE(yytext); }
  
- /* Token categories */
-([+*/^%<>]|\.\.|<=|>=|==|~=|and|or)		{ log("binop",yytext); return yy::parser::make_BINOP(yytext); }
-([#]|not)								{ log("unop",yytext); return yy::parser::make_UNOP(yytext); }
--										{ log("minus(unop/binop)",yytext); return yy::parser::make_MINUS(yytext); }
+ /* Binary Operators */
+[+]                                     { log("binop/+", yytext); return yy::parser::make_PLUS(PLUS); }
+[-]                                     { log("binop/-", yytext); return yy::parser::make_MINUS(MINUS); }
+[*]                                     { log("binop/*", yytext); return yy::parser::make_TIMES(TIMES); }
+[/]                                     { log("binop//", yytext); return yy::parser::make_DIVIDE(DIVIDE); }
+[\^]                                    { log("binop/^", yytext); return yy::parser::make_POWER(POWER); }
+[%]                                     { log("binop/%", yytext); return yy::parser::make_MODULO(MODULO); }
+[=][=]                                  { log("binop/==", yytext); return yy::parser::make_EQUALS(EQUALS); }
+[<]                                     { log("binop/<", yytext); return yy::parser::make_LESS_THAN(MORE); }
+[<][=]                                  { log("binop/<=", yytext); return yy::parser::make_LESS_EQUAL_THAN(MORE_EQUAL); }
+[>]                                     { log("binop/>", yytext); return yy::parser::make_MORE_THAN(LESS); }
+[>][=]                                  { log("binop/>=", yytext); return yy::parser::make_MORE_EQUAL_THAN(LESS_EQUAL); }
+[~][=]                                  { log("binop/~=", yytext); return yy::parser::make_TILDE_EQUAL(TILDE_EQUAL); }
+[.][.]                                  { log("binop/..", yytext); return yy::parser::make_APPEND(APPEND); }
+ /* Unary Operators */
+and                                     { log("unop/and", yytext); return yy::parser::make_AND(AND); }
+or                                      { log("unop/or", yytext); return yy::parser::make_OR(OR); }
+[#]                                     { log("unop/#", yytext); return yy::parser::make_SQUARE(SQUARE); }
+not                                     { log("unop/not", yytext); return yy::parser::make_NOT(NOT); }
+
 
  /*  */
 local									{ log("local", yytext); return yy::parser::make_LOCAL(yytext); }
@@ -61,7 +78,7 @@ true									{ log("true", yytext); return yy::parser::make_TRUE(yytext);}
 
 
  /* Single tokens */
-=										{ log("equals",yytext); return yy::parser::make_EQUALS(yytext); }
+=										{ log("assign",yytext); return yy::parser::make_ASSIGN(yytext); }
 \.										{ log("dot",yytext); return yy::parser::make_DOT(yytext); }
 :										{ log("colon",yytext); return yy::parser::make_COLON(yytext); }
 ,										{ log("comma",yytext); return yy::parser::make_COMMA(yytext); }
