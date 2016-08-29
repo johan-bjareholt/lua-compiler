@@ -69,11 +69,16 @@ string name;
 
 // "Helper" functions to build nodes in the tree...
 
+
 Expression *BinOp(char op, Expression *l, Expression *r);
+
+Expression *UnOp(char op, Expression *l);
 
 Expression *Variable(string name);
 
 Expression *Constant(int value);
+
+Expression *String(string name);
 
 /* Note: You almost certainly do not want to smash together Comparitor
          and Expression classes in anything more complex than the lab */
@@ -96,11 +101,17 @@ char kind;
 
 Statement *Assign(string target, Expression *val);
 
+Statement *Assign(string target, Statement* statement);
+
 Statement *If(Expression *condition, Statement *trueSt, Statement *falseSt);
 
 Statement *Seq(initializer_list<Statement*> ss);
 
+Statement *For(std::string varname, Expression* varval, Expression* boundry, Expression* step, Statement* body);
 
+Statement *FunctionDef(std::string& name, std::list<Expression*> args, Statement* body);
+
+Statement *FunctionCall(Expression* funcname, Statement* args);
 
 
 string newName();

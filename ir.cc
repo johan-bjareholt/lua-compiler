@@ -65,6 +65,8 @@ void Expression::dump(int depth)
     case 'N':  cout << op << endl;    break;
     case 'V':  cout << name << endl;  break;
     case 'C':  cout << value << endl; break;
+	case 'S':  cout << name << endl;  break;
+	default: cout << "bad expression: " << kind << endl; break;
   }
   if(left!=NULL)
     left->dump(depth+1);
@@ -83,6 +85,12 @@ Expression *result = new Expression('N',l,r);
   return result;
 }
 
+Expression *UnOp(char op, Expression *l){
+	Expression *result = new Expression('N',l,NULL);
+	result->op = op;
+	return result;
+}
+
 Expression *Variable(string name)
 {
 Expression *result = new Expression('V',NULL,NULL);
@@ -90,10 +98,17 @@ Expression *result = new Expression('V',NULL,NULL);
   return result;
 }
 
+
 Expression *Constant(int value)
 {
 Expression *result = new Expression('C',NULL,NULL);
   result->value = value;
+  return result;
+}
+
+Expression *String(std::string value){
+  Expression *result = new Expression('S',NULL,NULL);
+  result->name = value;
   return result;
 }
 
@@ -148,6 +163,40 @@ Statement *result = new Statement('S');
     result->children.push_back(s);
   return result;
 }
+
+Statement *For(std::string varname,Expression* varval, Expression* boundry, Expression* step, Statement* body){
+	Statement *result = new Statement('S');
+	Statement *a = Seq({Assign("a",Constant(1))});
+	
+	Statement *loop = new Statement('S');
+	Statement *loopIf = If(BinOp('=',Variable(varname),boundry), new Statement('S'), new Statement('S'));
+	Statement *loopInc = Assign(varname, BinOp('+',Variable(varname),step));
+	loop->children.push_back(loopIf);
+	body->children.push_back(loopInc);
+
+	result->children.push_back(Assign(varname, varval));
+	result->children.push_back(loop);
+	return result;
+}
+
+Statement *FunctionDef(std::string& name, std::list<Expression*> args, Statement* body){
+	Statement* result = new Statement('F');
+	Expression* nameExp = Constant(0);
+	nameExp->name = name;
+	result->expressions.push_back(nameExp);
+	// Add args
+	result->children.push_back(Seq({}));
+	result->children.push_back(body);
+	return result;
+}
+
+Statement *FunctionCall(Expression* funcname, Statement* args){
+  Statement *result = new Statement('f');
+  result->expressions.push_back(funcname);
+  result->children.push_back(args);
+  return result;
+}
+
 
 
 
@@ -266,6 +315,13 @@ void convertIf(Statement *in, BBlock **current)
   *current = nextBlock;
 }
 
+void convertFuncDef(Statement* in, BBlock *current){
+	std::string name = in->expressions.at(0)->name;
+	Statement* body = in->children.at(1);
+	BBlock* bodyBlock = new BBlock();
+	convertStatement(body, &bodyBlock);
+}
+
 void convertSeq(Statement *in, BBlock **current)
 {
   for(auto s: in->children)
@@ -281,13 +337,16 @@ void convertStatement(Statement *in, BBlock **current)
   {
     case 'A':
       convertAssign(in,*current);   // Does not update current
-    break;
+      break;
+	case 'F':
+	  convertFuncDef(in,*current);	// Does not update current
+      break;
     case 'I':
       convertIf(in,current);
-    break;
+      break;
     case 'S':
       convertSeq(in,current);
-    break;
+      break;
   }
 }
 

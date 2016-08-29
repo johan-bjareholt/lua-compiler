@@ -106,7 +106,6 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::list<std::string>& 
 	}
 	
 	switch(op.op){
-		// +
 		case '+':
 			{
 			ss << "\"movq " << rhs << ", %%rax\\n\\t\"" << std::endl;
@@ -131,6 +130,15 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::list<std::string>& 
 			break;
 		// Copy
 		case 'c':
+			break;
+		// Label
+		case 'l':
+			break;
+		// Goto
+		case 'g':
+			break;
+		// Call function
+		case 'f':
 			break;
 	}
 }
