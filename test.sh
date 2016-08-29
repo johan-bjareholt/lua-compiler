@@ -7,9 +7,9 @@
 testpass=0
 testcount=0
 
-function test() {
+function ctest() {
 	testcount=$(($testcount+1))
-	echo "Grammar testing $1"
+	echo "Crash testing $1"
 	./lua $1
 	if [ $? -eq 0 ]; then
 		testpass=$(($testpass+1))
@@ -19,10 +19,10 @@ function test() {
 	fi
 }
 
-test "tests/test1.lua"
-test "tests/test2.lua"
-test "tests/test3.lua"
-test "tests/test4.lua"
-test "tests/misc.lua"
+ctest "tests/test1.lua"
+ctest "tests/test2.lua"
+ctest "tests/test3.lua"
+ctest "tests/test4.lua"
+ctest "tests/misc.lua"
 
-printf "%d/%d tests passed\n" $testpass $testcount
+printf "%d/%d crashtests passed\n" $testpass $testcount

@@ -1,9 +1,9 @@
 #include "convert.h"
+#include "ops.h"
 #include <cctype>
 #include <algorithm>
 
-void outMainBlock(BBlock& startblock){
-	std::stringstream ss;
+void outMainBlock(std::stringstream& ss, BBlock& startblock){
 	ss << "#include <iostream>" << std::endl;
 	ss << "int main(){" << std::endl;
 
@@ -31,8 +31,6 @@ void outMainBlock(BBlock& startblock){
 	ss << ":" << std::endl;
 	ss << ");" << std::endl;
 	ss << "}" << std::endl;
-
-	std::cout << ss.str();
 }
 
 static int labelcount = 0;
@@ -104,7 +102,6 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::list<std::string>& 
 		tempss2 << "\%[" << lhs << "]";
 		lhs = tempss2.str();
 	}
-	
 	switch(op.op){
 		case '+':
 			{

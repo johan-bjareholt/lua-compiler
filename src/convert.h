@@ -3,7 +3,7 @@
 #include "ir.h"
 #include <string>
 
-void outMainBlock(BBlock& block);
+void outMainBlock(std::stringstream& ss, BBlock& block);
 
 std::string outBlock(BBlock& block, std::stringstream& ss, std::list<std::string>&);
 

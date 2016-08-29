@@ -23,23 +23,23 @@ using namespace std;
 class ThreeAd
 {
 public:
-  char op;
-  string result, lhs, rhs;
+    char op;
+    string result, lhs, rhs;
 
-  ThreeAd(string out, char o, string l, string r);
+    ThreeAd(string out, char o, string l, string r);
 
-  void dump();
+    void dump(std::stringstream& ss);
 };
 
 class BBlock
 {
-public:
-list<ThreeAd> instructions;
-BBlock *trueExit, *falseExit;
+    public:
+    list<ThreeAd> instructions;
+    BBlock *trueExit, *falseExit;
   
-  BBlock();
+    BBlock();
 
-  void dump(); 
+    void dump(std::stringstream& ss); 
 };
 
 
@@ -63,7 +63,7 @@ string name;
 
   Expression(char k, Expression *l, Expression *r);
 
-  void dump(int depth=0);
+  void dump(std::stringstream& ss, int depth=0);
   
 };
 
@@ -94,7 +94,7 @@ vector<Statement*> children;
 char kind;
   Statement(char k);
 
-  void dump(int indent=0);
+  void dump(std::stringstream& ss, int indent=0);
 };
 
 // Again, "helper" functions rather than separate classes to keep it short.
@@ -148,5 +148,5 @@ void convertStatement(Statement *in, BBlock **current);
 // Iterate through the BBlock nodes in the CFG and dump each one
 // exactly once. This is provided as an example of marking nodes
 // in a graph and implementing traversals.
-void dumpCFG(BBlock *start);
+void dumpCFG(std::stringstream& ss, BBlock *start);
 
