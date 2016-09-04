@@ -48,8 +48,10 @@ int main(int argc, char** argv){
 	parser.parse();
 	
     root->dump(ss);
-    std::cout << ss.str();
-    ss.clear();
+    if (debug_grammar){
+        std::cout << ss.str();
+    }
+    ss.str("");
 
 	BBlock *start = new BBlock();
 	BBlock *current = start;
@@ -57,19 +59,19 @@ int main(int argc, char** argv){
     if (debug_cfg){
 	    dumpCFG(ss, start);
         std::cout << ss.str();
-        ss.clear();
+        ss.str("");
     }
-    ss.clear();
-	outMainBlock(ss, *start);
-    if (output_mode == OUTPUT_STDOUT){
-        std::cout << ss.str();
-    }
-    else if (output_mode == OUTPUT_FILE){
+	
+    outMainBlock(ss, *start);
+    if (output_mode == OUTPUT_FILE){
         std::ofstream outFile(output_filename);
         outFile << ss.str();
         outFile.close();
     }
-    ss.clear();
+    //else if (output_mode == OUTPUT_STDOUT){
+    //    std::cout << ss.str();
+    //}
+    ss.str("");
 	
 	return 0;
 }
@@ -89,7 +91,8 @@ void parse_flags(int argc, char** argv){
                     debug_cfg = true;
                     break;
                 default:
-                    std::cout << "Unknown option" << std::endl;
+                    std::cout << "Unknown option -"<< argv[i][1] << std::endl;
+                    exit(1);
                     break;
             } 
         }

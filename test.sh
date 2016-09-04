@@ -19,10 +19,10 @@ function ctest() {
 	fi
 }
 
-ctest "tests/test1.lua"
-ctest "tests/test2.lua"
-ctest "tests/test3.lua"
-ctest "tests/test4.lua"
-ctest "tests/misc.lua"
+ctest "tests/grammar/test1.lua"
+ctest "tests/grammar/test2.lua"
+ctest "tests/grammar/test3.lua"
+ctest "tests/grammar/test4.lua"
+ctest "tests/grammar/misc.lua"
 
 printf "%d/%d crashtests passed\n" $testpass $testcount

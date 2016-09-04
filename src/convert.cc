@@ -3,6 +3,12 @@
 #include <cctype>
 #include <algorithm>
 
+static const std::string stdlib = \
+    "\"print:\"\n" \
+    "\"io.write:\"\n" \
+    "\"    call puti\"\n" \
+    "\"    ret\"\n";
+
 void outMainBlock(std::stringstream& ss, BBlock& startblock){
 	ss << "#include <iostream>" << std::endl;
 	ss << "int main(){" << std::endl;
@@ -10,6 +16,7 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
 	std::list<std::string> usedSymbols = std::list<std::string>();
 
 	std::stringstream body;
+    body << stdlib;
 	outBlock(startblock, body, usedSymbols);
 	body << "\"exit:\\n\\t\"" << std::endl;
 
@@ -19,7 +26,6 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
 		ss << "long " << symbolname << ";" << std::endl;
 	}
 
-	ss << "asm(" << std::endl;
 	ss << body.str();
 	ss << ":";
 	for (auto iter = usedSymbols.begin(); iter!=usedSymbols.end(); iter++){
@@ -75,7 +81,11 @@ bool is_digits(const std::string &str)
     return std::all_of(str.begin(), str.end(), ::isdigit);
 }
 
+static const std::string pre_in = "\"";
+static const std::string post_in = "\\n\\t\"\n";
+
 void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::list<std::string>& usedSymbols){
+	ss << "asm(" << std::endl;
 	usedSymbols.push_back(op.result);
 	
 	std::string lhs = op.lhs;
@@ -105,28 +115,33 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::list<std::string>& 
 	switch(op.op){
 		case '+':
 			{
-			ss << "\"movq " << rhs << ", %%rax\\n\\t\"" << std::endl;
-			ss << "\"addq " << lhs << ", %%rax\\n\\t\"" << std::endl;
-			ss << "\"movq " << "%%rax , %[" << op.result << "]\\n\\t\"" << std::endl;
+			//ss << "\"movq " << rhs << ", %%rax\\n\\t\"" << std::endl;
+            //
+			ss << pre_in << "movq " << rhs << ", %%rax" << post_in;
+			ss << pre_in << "addq " << lhs << ", %%rax" << post_in;
+			ss << pre_in << "movq " << "%%rax , %[" << op.result << "]" << post_in;
 			}
 			break;
 		case '-':
 			{
-			ss << "\"movq " << rhs << ", %%rax\\n\\t\"" << std::endl;
-			ss << "\"subq " << lhs << ", %%rax\\n\\t\"" << std::endl;
-			ss << "\"movq " << "%%rax , [" << op.result << "]\\n\\t\"" << std::endl;
+			ss << pre_in << "movq " << rhs << ", %%rax" << post_in;
+			ss << pre_in << "subq " << lhs << ", %%rax" << post_in;
+			ss << pre_in << "movq " << "%%rax , [" << op.result << "]" << post_in;
 			}
 			break;
 		case '*':
 			break;
+        case '/':
+            break;
 		case '=':
 			{
-			ss << "\"movq " << rhs << ", %%rax\\n\\t\"" << std::endl;
-			ss << "\"cmp "  << lhs << ", %%rax\\n\\t\"" << std::endl;
+			ss << pre_in << "movq " << rhs << ", %%rax" << post_in;
+			ss << pre_in << "cmp "  << lhs << ", %%rax" << post_in;
 			}
 			break;
 		// Copy
 		case 'c':
+			ss << pre_in << "movq " << rhs << "," << lhs << post_in;
 			break;
 		// Label
 		case 'l':
@@ -136,6 +151,7 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::list<std::string>& 
 			break;
 		// Call function
 		case 'f':
+            ss << "\"call " << rhs << "\\n\\n\"" << std::endl;
 			break;
 	}
 }

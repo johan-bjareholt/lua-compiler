@@ -62,10 +62,10 @@ void Expression::dump(std::stringstream& ss, int depth)
         ss << "  ";
     switch(kind)
     {
-        case 'N':  ss << op << endl;    break;
-        case 'V':  ss << name << endl;  break;
+        case 'N':  ss << op    << endl; break;
+        case 'V':  ss << name  << endl; break;
         case 'C':  ss << value << endl; break;
-	    case 'S':  ss << name << endl;  break;
+	    case 'S':  ss << name  << endl; break;
 	    default: ss << "bad expression: " << kind << endl; break;
     }
     if(left!=NULL)
@@ -211,6 +211,14 @@ string newName()
     result << "_t" << nameCounter++;
     return result.str();
 }
+int stringNameCounter = 0;
+string newStringName()
+{
+    stringstream result;
+    result << "_s" << stringNameCounter++;
+    return result.str();
+}
+
 
 void namePass(Expression *tree, map<Expression*,string> &nameMap)
 {
@@ -325,11 +333,32 @@ void convertFuncDef(Statement* in, BBlock *current){
 	convertStatement(body, &bodyBlock);
 }
 
+void convertFuncCall(Statement* in, BBlock *current){
+    // Set args
+	Statement* args = in->children.at(0);
+    int argc = 0;
+    for (auto arg: args->expressions){
+        std::stringstream ss;
+        ss << "_a" << argc;
+        std::string name = ss.str();
+        std::string val = convert(arg, current);
+        ThreeAd ta = ThreeAd(name,'c',name,val);
+        current->instructions.push_back(ta);
+    }
+	// Call
+    std::string name = in->expressions.at(0)->name;
+    ThreeAd call = ThreeAd(name,'f',name,name);
+    current->instructions.push_back(call);
+	//BBlock* bodyBlock = new BBlock();
+	//convertStatement(body, &bodyBlock);
+}
+
 void convertSeq(Statement *in, BBlock **current)
 {
     for(auto s: in->children)
         convertStatement(s,current);
 }
+
 
 // Despatch point
 void convertStatement(Statement *in, BBlock **current)
@@ -341,6 +370,9 @@ void convertStatement(Statement *in, BBlock **current)
             break;
         case 'F':
             convertFuncDef(in,*current);	// Does not update current
+            break;
+        case 'f':
+            convertFuncCall(in,*current);  // Does not update current
             break;
         case 'I':
             convertIf(in,current);
