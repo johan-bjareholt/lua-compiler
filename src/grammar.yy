@@ -28,9 +28,9 @@
 %type <Statement*> else
 
 %type <Statement*> forblock
+%type <Statement*> whileblock
 
 %type <Expression*> var
-%type <std::list<Expression*>> varlist
 
 %type <Expression*> exp
 %type <Expression*> prefixexp
@@ -227,47 +227,24 @@ stat	: namelist ASSIGN explist {
 			$$ = $1;
 		}
 		/*| DO block END {
-			$$ = Node("do", "");
-			$$.children.push_back($2);
-		}
-		| WHILE exp DO block END {
-			$$ = Node("while","");
-			$$.children.push_back($2);
-			 $$.children.push_back($4);
-		}
+			$$ = $2;
+		}*/
+        | whileblock {
+            $$ = $1;
+        }
+        /*
 		| REPEAT block UNTIL exp {
 			$$ = Node("repeat","");
 			$$.children.push_back($2);
 			$$.children.push_back($4);
-		}*/
+		}
+        */
 		| ifblock {
 			$$ = $1;
 		}
 		| forblock {
 			$$ = $1;
 		}
-		/*
-		| FOR name ASSIGN exp COMMA exp DO block END {
-			$$ = Node("for","2var");
-			$$.children.push_back($2);
-			$$.children.push_back($4);
-			$$.children.push_back($6);
-			$$.children.push_back($8);
-		}
-		| FOR name ASSIGN exp COMMA exp COMMA exp DO block END {
-			$$ = Node("for","3var");
-			$$.children.push_back($2);
-			$$.children.push_back($4);
-			$$.children.push_back($6);
-			$$.children.push_back($8);
-			$$.children.push_back($10);
-		}
-		| FOR namelist IN explist DO block END {
-			$$ = Node("for","in");
-			$$.children.push_back($2);
-			$$.children.push_back($4);
-			$$.children.push_back($6);
-		}*/
 	 	;
 
 forblock: FOR NAME ASSIGN exp COMMA exp DO block END {
@@ -282,6 +259,11 @@ forblock: FOR NAME ASSIGN exp COMMA exp DO block END {
 			exit(-1);
 		}
 		;
+		
+whileblock: WHILE exp DO block END {
+		    $$ = While($2, $4);
+		}
+        ;
 
 ifblock	: iflist else END {
 			$$ = new Statement('S');
@@ -345,25 +327,13 @@ var		: NAME {
 		}
 		| prefixexp DOT NAME {
 			// TODO: Implement
-			//$$ = $1;
-			//$$.name
-			$$ = $1;
+            std::stringstream ss;
+            ss << $1->name << "." << $3;
+			
+            $$ = $1;
+			$$->name = ss.str();
 		}
 	 	;
-
-varlist	: var {
-			$$ = std::list<Expression*>();
-			$$.push_back($1);
-			/*
-			$$ = Node("varlist","");
-			$$.children.push_back($1);
-			*/
-		}
-		| varlist COMMA var {
-			$$ = $1;
-			$$.push_back($3);
-		}
-		;
 
 funcname: funcname2 {
 			$$ = $1;

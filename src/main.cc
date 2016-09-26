@@ -53,8 +53,8 @@ int main(int argc, char** argv){
     }
     ss.str("");
 
-	BBlock *start = new BBlock();
-	BBlock *current = start;
+	BBlock* start = new BBlock();
+	BBlock* current = start;
 	convertStatement(root, &current);
     if (debug_cfg){
 	    dumpCFG(ss, start);
@@ -68,10 +68,17 @@ int main(int argc, char** argv){
         outFile << ss.str();
         outFile.close();
     }
-    //else if (output_mode == OUTPUT_STDOUT){
-    //    std::cout << ss.str();
-    //}
+    else if (output_mode == OUTPUT_STDOUT){
+        std::cout << ss.str();
+    }
     ss.str("");
+    
+    std::ofstream outDotFile("graph.dot");
+    start->dumpDot(ss);
+    outDotFile << ss.str();
+    outDotFile.close();
+    ss.str("");
+
 	
 	return 0;
 }

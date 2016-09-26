@@ -11,14 +11,21 @@
 */
 #pragma once
 
-#include<string>
-#include<iostream>
-#include<sstream>
-#include<list>
-#include<map>
-#include<vector>
-#include<set>
+#include <string>
+#include <iostream>
+#include <sstream>
+#include <list>
+#include <map>
+#include <vector>
+#include <set>
 using namespace std;
+
+class ThreeAd;
+class BBlock;
+class Statement;
+class Expression;
+
+#include "globals.h"
 
 class ThreeAd
 {
@@ -35,11 +42,13 @@ class BBlock
 {
     public:
     list<ThreeAd> instructions;
-    BBlock *trueExit, *falseExit;
+    BBlock *trueExit = nullptr;
+    BBlock *falseExit = nullptr;
   
     BBlock();
 
     void dump(std::stringstream& ss); 
+    void dumpDot(std::stringstream& ss, bool start=true);
 };
 
 
@@ -80,6 +89,10 @@ Expression *Constant(int value);
 
 Expression *String(string name);
 
+Expression *Label(std::string value);
+
+Expression *Goto(std::string value);
+
 /* Note: You almost certainly do not want to smash together Comparitor
          and Expression classes in anything more complex than the lab */
 Expression *Equality(Expression *l, Expression *r);
@@ -92,9 +105,9 @@ public:
 vector<Expression*> expressions;
 vector<Statement*> children;
 char kind;
-  Statement(char k);
+    Statement(char k);
 
-  void dump(std::stringstream& ss, int indent=0);
+    void dump(std::stringstream& ss, int indent=0);
 };
 
 // Again, "helper" functions rather than separate classes to keep it short.
@@ -108,6 +121,8 @@ Statement *If(Expression *condition, Statement *trueSt, Statement *falseSt);
 Statement *Seq(initializer_list<Statement*> ss);
 
 Statement *For(std::string varname, Expression* varval, Expression* boundry, Expression* step, Statement* body);
+
+Statement *While(Expression* expression, Statement* body);
 
 Statement *FunctionDef(std::string& name, std::list<Expression*> args, Statement* body);
 

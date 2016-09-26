@@ -9,15 +9,18 @@
    up to your assignment instead of defining a more appropriate class hierarchy
    for your parse trees.
 */
-#include<string>
-#include<iostream>
-#include<sstream>
-#include<list>
-#include<map>
-#include<vector>
-#include<set>
+#include <string>
+#include <iostream>
+#include <algorithm>
+#include <sstream>
+#include <list>
+#include <map>
+#include <vector>
+#include <set>
 
 #include "ir.h"
+
+std::vector<BBlock> funcdefs;
 
 using namespace std;
 
@@ -30,16 +33,63 @@ void ThreeAd::dump(std::stringstream& ss)
         << op << " " << rhs << endl;
 }
 
-BBlock::BBlock()
-    :   trueExit(NULL), falseExit(NULL)  {}
+BBlock::BBlock() :trueExit(NULL), falseExit(NULL){}
 
 void BBlock::dump(std::stringstream& ss)
 {
-    ss << "BBlock @ " << this << endl;
+    ss << "BBlock " << " @ " << this << endl;
     for(auto i : instructions)
         i.dump(ss);
     ss << "True: " << trueExit << endl;
     ss << "False: " << falseExit << endl;
+}
+
+static std::list<BBlock*> traversed_blocks;
+
+void BBlock::dumpDot(std::stringstream& ss, bool start){
+    // Start
+    if (start == true){
+        ss << "digraph {" << std::endl;
+        ss << "size=\"6,6\";" << std::endl;
+        ss << "node [color=lightblue, style=filled];" << std::endl;
+    }
+    traversed_blocks.push_back(this);
+    // Def self
+    ss  << '"' << this << '"' << std::endl;
+    // Set self string
+    ss  << "[" << "label=\"" << this << "" << std::endl;
+    std::stringstream ss_code;
+    for(auto i : instructions){
+        i.dump(ss_code);
+    }
+    // Handle " in the code so it doesn't escape
+    std::string code_s = ss_code.str();
+    for (int i = 0; i < code_s.length(); i++) {
+        //std::cout << i << std::endl;
+        if (code_s[i] == '"'){
+            code_s[i] = '\'';
+        }
+    }
+    ss << code_s;
+    // Close self def
+    ss << "\"];" << std::endl;
+    // Connect to subs
+    if (trueExit)
+        ss  << "    \"" << this << "\" -> \"" << trueExit << "\";" << std::endl;
+    if (falseExit)
+        ss  << "    \"" << this << "\" -> \"" << falseExit << "\";"<< std::endl;
+    // Dumpdot subs
+    bool trueExitFound = (std::find(traversed_blocks.begin(), traversed_blocks.end(), trueExit) != traversed_blocks.end());
+    if (trueExit && !trueExitFound)
+        trueExit->dumpDot(ss, false);
+    bool falseExitFound = (std::find(traversed_blocks.begin(), traversed_blocks.end(), falseExit) != traversed_blocks.end());
+    if (falseExit && !falseExitFound)
+        falseExit->dumpDot(ss, false);
+
+    // End
+    if (start == true){
+        ss << "}" << std::endl;
+    }
 }
 
 
@@ -98,7 +148,6 @@ Expression *Variable(string name)
     return result;
 }
 
-
 Expression *Constant(int value)
 {
     Expression *result = new Expression('C',NULL,NULL);
@@ -109,6 +158,20 @@ Expression *Constant(int value)
 Expression *String(std::string value){
     Expression *result = new Expression('S',NULL,NULL);
     result->name = value;
+    return result;
+}
+
+Expression *Label(std::string name)
+{
+    Expression *result = new Expression('l',NULL,NULL);
+    result->name = name;
+    return result;
+}
+
+Expression *Goto(std::string label)
+{
+    Expression *result = new Expression('g',NULL,NULL);
+    result->name = label;
     return result;
 }
 
@@ -130,8 +193,9 @@ void Statement::dump(std::stringstream& ss, int indent)
     for(int i=0; i<indent; i++)
         ss << "  ";
     ss << "Statement(" << kind << ")" << endl ;
-    for( auto e: expressions )
+    for( auto e: expressions ){
         e->dump(ss, indent+1);
+    }
     for( auto c: children )
         c->dump(ss, indent+1);
 }
@@ -164,22 +228,45 @@ Statement *Seq(initializer_list<Statement*> ss)
     return result;
 }
 
-Statement *For(std::string varname,Expression* varval, Expression* boundry, Expression* step, Statement* body){
-	Statement *result = new Statement('S');
-	Statement *a = Seq({Assign("a",Constant(1))});
-	
-	Statement *loop = new Statement('S');
-	Statement *loopIf = If(
-            BinOp('=',Variable(varname),boundry),
-                new Statement('S'),
-                new Statement('S'));
-	Statement *loopInc = Assign(varname, BinOp('+',Variable(varname),step));
-	loop->children.push_back(loopIf);
-	body->children.push_back(loopInc);
+Statement *Loop(Statement* pre, Expression* check, Statement* body, Statement* post){
+    Statement *result = new Statement('L');
+    result->children.push_back(pre);
+    result->expressions.push_back(check);
+    result->children.push_back(body);
+    result->children.push_back(post);
+    return result;
+}
 
-	result->children.push_back(Assign(varname, varval));
-	result->children.push_back(loop);
-	return result;
+Statement *For(std::string varname,Expression* varval, Expression* boundry, Expression* step, Statement* body){
+    // Get statement pointer as address
+    std::ostringstream address;
+    address << "_l";
+    address << (void const *)body;
+    std:string labelname = address.str();
+
+    // Loop start (assign)
+    Statement *pre = new Statement('S');
+	pre->children.push_back(Assign(varname, varval));
+	// Loop body (if,code,increment,if etc.)
+    Expression* check = BinOp('=',Variable(varname),boundry);
+    // Increment
+	Statement *post = Assign(varname, BinOp('+',Variable(varname),step));
+    // Return
+	return Loop(pre, check, body, post);
+}
+
+Statement *While(Expression* expression, Statement* body){
+    Statement* pre = new Statement('S');
+    Expression* check = expression;
+    Statement* post = new Statement('S');
+    /* TODO: Implement*/
+    /*
+    Statement *container = new Statement('L');
+    container->children.push_back(If(expression, body, new Statement('S')));
+	Statement *result = new Statement('S');
+    result->children.push_back(container);
+    */
+	return Loop(pre, check, body, post);
 }
 
 Statement *FunctionDef(std::string& name, std::list<Expression*> args, Statement* body){
@@ -319,6 +406,7 @@ void convertIf(Statement *in, BBlock **current)
     convertStatement(in->children.at(1), &falseBlock);
     (*current)->falseExit = falseBlock;
 
+    // Create next block
     BBlock* nextBlock = new BBlock();
     trueBlock->trueExit = nextBlock;
     falseBlock->trueExit = nextBlock;
@@ -342,21 +430,50 @@ void convertFuncCall(Statement* in, BBlock *current){
         ss << "_a" << argc;
         std::string name = ss.str();
         std::string val = convert(arg, current);
-        ThreeAd ta = ThreeAd(name,'c',name,val);
+        ThreeAd ta = ThreeAd(name,'c',val,val);
         current->instructions.push_back(ta);
+        argc++;
     }
 	// Call
     std::string name = in->expressions.at(0)->name;
-    ThreeAd call = ThreeAd(name,'f',name,name);
+    ThreeAd call = ThreeAd(newName(),'f',name,name);
     current->instructions.push_back(call);
-	//BBlock* bodyBlock = new BBlock();
-	//convertStatement(body, &bodyBlock);
 }
 
 void convertSeq(Statement *in, BBlock **current)
 {
     for(auto s: in->children)
         convertStatement(s,current);
+}
+
+void convertLoop(Statement *in, BBlock **current){
+    Statement* pre = in->children.at(0);
+    convertStatement(pre, current);
+    Expression* check = in->expressions.at(0);
+    Statement* body = in->children.at(1);
+    Statement* post = in->children.at(2);
+
+    BBlock* loopBlock = new BBlock();
+    BBlock* bodyBlock = new BBlock();
+    BBlock* nextBlock = new BBlock();
+
+    (*current)->trueExit = loopBlock;
+    // Set loop block
+    (*current) = loopBlock;
+    Expression* comparitor = in->expressions.back();
+    convertComparitor(comparitor, *current);
+    loopBlock->trueExit = bodyBlock;
+    loopBlock->falseExit = nextBlock;
+
+    // Set body block
+    (*current) = bodyBlock;
+    convertStatement(body, current);
+    convertStatement(post, current);
+    (*current) = bodyBlock;
+    (*current)->trueExit = loopBlock;
+
+    // Set next block
+    (*current) = nextBlock;
 }
 
 
@@ -373,6 +490,9 @@ void convertStatement(Statement *in, BBlock **current)
             break;
         case 'f':
             convertFuncCall(in,*current);  // Does not update current
+            break;
+        case 'L':
+            convertLoop(in,current);
             break;
         case 'I':
             convertIf(in,current);
