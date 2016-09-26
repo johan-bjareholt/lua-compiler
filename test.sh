@@ -23,6 +23,8 @@ ctest "tests/grammar/test1.lua"
 ctest "tests/grammar/test2.lua"
 ctest "tests/grammar/test3.lua"
 ctest "tests/grammar/test4.lua"
+#ctest "tests/grammar/test5.lua"
+ctest "tests/grammar/test6.lua"
 ctest "tests/grammar/misc.lua"
 
 printf "%d/%d crashtests passed\n" $testpass $testcount

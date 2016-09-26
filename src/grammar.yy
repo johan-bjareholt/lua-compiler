@@ -31,10 +31,11 @@
 %type <Statement*> whileblock
 
 %type <Expression*> var
+%type <std::list<Expression*>> varlist
 
 %type <Expression*> exp
-%type <Expression*> prefixexp
 %type <std::list<Expression*>> explist
+%type <Expression*> prefixexp
 
 %type <std::string> funcname
 %type <std::string> funcname2
@@ -171,10 +172,7 @@ optsemi	: SEMICOLON {}
 		;
 
 laststat: RETURN explist optsemi {
-			//$$ = Node("return","explist");
-			//$$.children.push_back($2);
 			// TODO: Implement
-			//$$ = $2;
 			$$ = new Statement('S');
 			$$->expressions.push_back(Constant(0));
 		}
@@ -191,11 +189,12 @@ laststat: RETURN explist optsemi {
 		}
 		;
 
-stat	: namelist ASSIGN explist {
+stat	: varlist ASSIGN explist {
 			$$ = new Statement('S');
 			int items = $1.size();
 			for (int i=0; i<items; i++){
-				$$->children.push_back(Assign($1.front(), $3.front()));
+                // TODO: Once tables work, remove ->name
+				$$->children.push_back(Assign($1.front()->name, $3.front()));
 				$1.pop_front();
 				$3.pop_front();
 			}
@@ -226,19 +225,15 @@ stat	: namelist ASSIGN explist {
 		| functioncall {
 			$$ = $1;
 		}
-		/*| DO block END {
+		| DO block END {
 			$$ = $2;
-		}*/
+		}
         | whileblock {
             $$ = $1;
         }
-        /*
 		| REPEAT block UNTIL exp {
-			$$ = Node("repeat","");
-			$$.children.push_back($2);
-			$$.children.push_back($4);
+			$$ = Repeat($4, $2);
 		}
-        */
 		| ifblock {
 			$$ = $1;
 		}
@@ -312,18 +307,11 @@ else	: ELSE block {
 		;
 
 var		: NAME {
-	 		/*
-			$$ = Node("var", "name");
-			$$.children.push_back($1);
-			*/
-			$$ = Variable($1);//Variable($1);
+			$$ = Variable($1);
 	 	}
 		| prefixexp BRACKET_L exp BRACKET_R {
-			/*
-			$$ = Node("var","inbrackets");
-			$$.children.push_back($1);
-			$$.children.push_back($3);
-			*/
+            // TODO: Implement
+            //$$ = TableItem($1->name, $3);
 		}
 		| prefixexp DOT NAME {
 			// TODO: Implement
@@ -334,6 +322,16 @@ var		: NAME {
 			$$->name = ss.str();
 		}
 	 	;
+
+varlist : var {
+			$$ = std::list<Expression*>();
+			$$.push_back($1);
+		}
+		| varlist COMMA var {
+			$$ = $1;
+			$$.push_back($3);
+		}
+		;
 
 funcname: funcname2 {
 			$$ = $1;
@@ -396,18 +394,17 @@ exp		: NIL {
 		| prefixexp {
 			$$ = $1;
 		}
-		| tableconstructor {
+		/*| tableconstructor {
+            //$$ = $1;
 			//$$ = Node("exp","tableconstructor");
 			//$$.children.push_back($1);
-		}
+		}*/
 		| op {
 			$$ = $1;
 		}
 		;
 
-explist	: exp {
-			//$$ = Node("explist", "");
-			//$$.children.push_back($1);
+explist : exp {
 			$$ = std::list<Expression*>();
 			$$.push_back($1);
 		}
@@ -488,7 +485,6 @@ parlist	: namelist {
 
 args	: PARANTHESES_L PARANTHESES_R {
 	 		$$ = new Statement('S');
-	 		//$$ = Node("explist","empty");
 	 	}
 		| PARANTHESES_L explist PARANTHESES_R {
 			$$ = new Statement('S');
@@ -498,7 +494,7 @@ args	: PARANTHESES_L PARANTHESES_R {
 			//$$ = $2;
 		}
 		| tableconstructor {
-			//$$ = $1;
+			$$ = $1;
 		}
 		| string {
 			$$ = new Statement('S');

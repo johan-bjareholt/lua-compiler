@@ -148,6 +148,12 @@ Expression *Variable(string name)
     return result;
 }
 
+Expression *TableItem(string name, Expression* index){
+    Expression* result = new Expression('T', index, NULL);
+    result->name = name;
+    return result;
+}
+
 Expression *Constant(int value)
 {
     Expression *result = new Expression('C',NULL,NULL);
@@ -259,14 +265,14 @@ Statement *While(Expression* expression, Statement* body){
     Statement* pre = new Statement('S');
     Expression* check = expression;
     Statement* post = new Statement('S');
-    /* TODO: Implement*/
-    /*
-    Statement *container = new Statement('L');
-    container->children.push_back(If(expression, body, new Statement('S')));
-	Statement *result = new Statement('S');
-    result->children.push_back(container);
-    */
 	return Loop(pre, check, body, post);
+}
+
+Statement *Repeat(Expression* expression, Statement* body){
+    Statement* repeat = new Statement('R');
+    repeat->children.push_back(repeat);
+    repeat->expressions.push_back(expression);
+	return repeat;
 }
 
 Statement *FunctionDef(std::string& name, std::list<Expression*> args, Statement* body){
@@ -274,7 +280,7 @@ Statement *FunctionDef(std::string& name, std::list<Expression*> args, Statement
 	Expression* nameExp = Constant(0);
 	nameExp->name = name;
 	result->expressions.push_back(nameExp);
-	// Add args
+	// TODO: Add args support
 	result->children.push_back(Seq({}));
 	result->children.push_back(body);
 	return result;
@@ -446,6 +452,28 @@ void convertSeq(Statement *in, BBlock **current)
         convertStatement(s,current);
 }
 
+void convertRepeat(Statement *in, BBlock **current){
+    Statement*  body = in->children.at(0);
+    Expression* check = in->expressions.at(0);
+
+    BBlock* bodyBlock = new BBlock();
+    BBlock* checkBlock = new BBlock();
+    BBlock* nextBlock = new BBlock();
+
+    (*current)->trueExit = bodyBlock;
+
+    (*current) = bodyBlock;
+    convertStatement(body, current);
+    bodyBlock->trueExit = checkBlock;
+    
+    (*current) = checkBlock;
+    convertComparitor(check, *current);
+    checkBlock->trueExit = bodyBlock;
+    checkBlock->falseExit = nextBlock;
+
+    (*current) = nextBlock;
+}
+
 void convertLoop(Statement *in, BBlock **current){
     Statement* pre = in->children.at(0);
     convertStatement(pre, current);
@@ -462,14 +490,13 @@ void convertLoop(Statement *in, BBlock **current){
     (*current) = loopBlock;
     Expression* comparitor = in->expressions.back();
     convertComparitor(comparitor, *current);
-    loopBlock->trueExit = bodyBlock;
-    loopBlock->falseExit = nextBlock;
+    (*current)->trueExit = bodyBlock;
+    (*current)->falseExit = nextBlock;
 
     // Set body block
     (*current) = bodyBlock;
     convertStatement(body, current);
     convertStatement(post, current);
-    (*current) = bodyBlock;
     (*current)->trueExit = loopBlock;
 
     // Set next block
@@ -493,6 +520,9 @@ void convertStatement(Statement *in, BBlock **current)
             break;
         case 'L':
             convertLoop(in,current);
+            break;
+        case 'R':
+            convertRepeat(in,current);
             break;
         case 'I':
             convertIf(in,current);

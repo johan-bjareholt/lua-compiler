@@ -64,15 +64,15 @@ class BBlock
 
 class Expression      // Implicit union of binary operators, constants and variables.
 {
-public:
-class Expression *left, *right;
-char kind, op;
-int value;
-string name;
+    public:
+    class Expression *left, *right;
+    char kind, op;
+    int value;
+    string name;
 
-  Expression(char k, Expression *l, Expression *r);
+    Expression(char k, Expression *l, Expression *r);
 
-  void dump(std::stringstream& ss, int depth=0);
+    void dump(std::stringstream& ss, int depth=0);
   
 };
 
@@ -84,6 +84,8 @@ Expression *BinOp(char op, Expression *l, Expression *r);
 Expression *UnOp(char op, Expression *l);
 
 Expression *Variable(string name);
+
+Expression *TableItem(string name, Expression* index);
 
 Expression *Constant(int value);
 
@@ -123,6 +125,8 @@ Statement *Seq(initializer_list<Statement*> ss);
 Statement *For(std::string varname, Expression* varval, Expression* boundry, Expression* step, Statement* body);
 
 Statement *While(Expression* expression, Statement* body);
+
+Statement *Repeat(Expression* expression, Statement* body);
 
 Statement *FunctionDef(std::string& name, std::list<Expression*> args, Statement* body);
 

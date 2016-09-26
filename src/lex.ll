@@ -54,7 +54,7 @@ else									{ log("else", yytext); return yy::parser::make_ELSE(yytext); }
  /* Unary Operators */
 and                                     { log("unop/and", yytext); return yy::parser::make_AND(AND); }
 or                                      { log("unop/or", yytext); return yy::parser::make_OR(OR); }
-[#]                                     { log("unop/#", yytext); return yy::parser::make_SQUARE(SQUARE); }
+#                                     { log("unop/#", yytext); return yy::parser::make_SQUARE(SQUARE); }
 not                                     { log("unop/not", yytext); return yy::parser::make_NOT(NOT); }
 
 
