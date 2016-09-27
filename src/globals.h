@@ -8,7 +8,7 @@ extern int output_mode;
 extern std::string outfile;
 
 extern Statement* root;
-extern std::vector<BBlock> funcdefs;
+extern std::vector<BBlock*> funcdefs;
 
 extern unsigned int total;
 extern int linenr;

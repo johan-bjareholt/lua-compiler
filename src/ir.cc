@@ -20,7 +20,7 @@
 
 #include "ir.h"
 
-std::vector<BBlock> funcdefs;
+std::vector<BBlock*> funcdefs;
 
 using namespace std;
 
@@ -367,7 +367,7 @@ void convertAssign(Statement *in, BBlock *out)
     //       to fill the target BBlock with.
     std::string name = in->expressions.at(0)->name;
     std::string val = convert(in->expressions.at(1), out);
-    ThreeAd ta = ThreeAd(name,'c',val,val);
+    ThreeAd ta = ThreeAd(name,'c',name,val);
     out->instructions.push_back(ta);
 }
 
@@ -425,6 +425,7 @@ void convertFuncDef(Statement* in, BBlock *current){
 	Statement* body = in->children.at(1);
 	BBlock* bodyBlock = new BBlock();
 	convertStatement(body, &bodyBlock);
+    funcdefs.push_back(bodyBlock);
 }
 
 void convertFuncCall(Statement* in, BBlock *current){
@@ -436,7 +437,7 @@ void convertFuncCall(Statement* in, BBlock *current){
         ss << "_a" << argc;
         std::string name = ss.str();
         std::string val = convert(arg, current);
-        ThreeAd ta = ThreeAd(name,'c',val,val);
+        ThreeAd ta = ThreeAd(name,'c',name,val);
         current->instructions.push_back(ta);
         argc++;
     }

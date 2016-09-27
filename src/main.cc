@@ -62,7 +62,7 @@ int main(int argc, char** argv){
         ss.str("");
     }
 	
-    //outMainBlock(ss, *start);
+    outMainBlock(ss, *start);
     if (output_mode == OUTPUT_FILE){
         std::ofstream outFile(output_filename);
         outFile << ss.str();
