@@ -3,7 +3,7 @@
 #include <cctype>
 #include <algorithm>
 
-static const std::string pre_in = "\"    ";
+static const std::string pre_in = "    \"    ";
 static const std::string post_in = "\\n\"\n";
 
 
@@ -44,25 +44,34 @@ std::string newLabel(){
 
 
 void outMainBlock(std::stringstream& ss, BBlock& startblock){
-	ss << "#include <iostream>" << std::endl;
-    ss << "void print(const char* msg){puts(msg);}" << std::endl;
-    //ss << stdlibvars << std::endl;
-	ss << "int main(){" << std::endl;
+    std::stringstream headss;
+    std::stringstream mainss;
+    std::stringstream bodyss;
+    
+    // Standard functions
+    headss << "// Standard functions" << std::endl;
+	headss << "#include <iostream>" << std::endl;
+    headss << "void print(const char* msg){puts(msg);}" << std::endl;
+	
+    mainss << "int main(){" << std::endl;
 
 	std::set<std::string> inputSymbols = std::set<std::string>();
     inputSymbols.insert("print");
-	std::set<std::string> outputSymbols = std::set<std::string>();
+	
+    std::set<std::string> outputSymbols = std::set<std::string>();
+    // Regs
+    vars.insert("_a0");
+    //vars.insert("_a1");
+    //vars.insert("_a2");
+    //vars.insert("_a3");
     outputSymbols.insert("_a0");
-    outputSymbols.insert("_a1");
-    outputSymbols.insert("_a2");
-    outputSymbols.insert("_a3");
+    //outputSymbols.insert("_a1");
+    //outputSymbols.insert("_a2");
+    //outputSymbols.insert("_a3");
 
-	std::stringstream body;
-	body << "asm(" << std::endl;
-    body << "// main" << std::endl;
-	outBlock(startblock, body, outputSymbols, inputSymbols);
-    //body << "// stdlib" << std::endl;
-    //body << stdlib;
+	bodyss << "    asm(" << std::endl;
+    bodyss << "    // main" << std::endl;
+	outBlock(startblock, bodyss, outputSymbols, inputSymbols);
     //outputSymbols.insert("intformat");
     /* TODO: To be properly implemented
     body << "// funcdefs" << std::endl;
@@ -71,74 +80,79 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
 		body << pre_in << "ret" << post_in;
     }
     */
-    
-    // Regs
-    vars.insert("_a0");
-    vars.insert("_a1");
-    vars.insert("_a2");
-    vars.insert("_a3");
+    bodyss << std::endl;
+    bodyss << pre_in << "label_end:" << post_in;
     
     // Work ints
-    ss << "// Working vars decl" << std::endl;
+    mainss << "    // Working vars decl" << std::endl;
 	for (std::string symbol : vars){
-		ss << "long " << symbol << ";" << std::endl;
+		mainss << "    long " << symbol << ";" << std::endl;
 	}
     
     // Strings
-    ss << "// Strings decl" << std::endl;
+    mainss << "    // Strings decl" << std::endl;
     for (std::pair<int, std::string> strp : strings){
-        ss << "const char* " << "_s" << strp.first << " = " << strp.second << ";"<< std::endl;
+        mainss << "    const char* " << "_s" << strp.first << " = " << strp.second << ";"<< std::endl;
     }
 
-	ss << body.str();
-	ss << ": // Output symbols" << std::endl;
+	mainss << bodyss.str();
+	mainss << "    : // Output symbols" << std::endl;
 	for (auto iter = outputSymbols.begin(); iter!=outputSymbols.end(); iter++){
-		ss << "  [" << *iter << "] \"+g\" (" << *iter << ")";
+		mainss << "      [" << *iter << "] \"+g\" (" << *iter << ")";
 		if (std::next(iter) != outputSymbols.end())
-			ss << ",";
-		ss << std::endl;
+			mainss << ",";
+		mainss << std::endl;
 	}
-	ss << ": // Input symbols" << std::endl;
+	mainss << "    : // Input symbols" << std::endl;
 	for (auto iter = inputSymbols.begin(); iter!=inputSymbols.end(); iter++){
-		ss << "  [" << *iter << "] \"r\" (" << *iter << ")";
+		mainss << "      [" << *iter << "] \"r\" (" << *iter << ")";
 		if (std::next(iter) != inputSymbols.end())
 			ss << ",";
-		ss << std::endl;
+		mainss << std::endl;
 	}
 
-    ss << ": // Clobbers" << std::endl;
-    ss << "  \"%rax\", \"%rbx\", \"%rcx\", \"%rdx\", \"%rdi\", \"%rsi\"" << std::endl;
-	ss << ");" << std::endl;
-	ss << "}" << std::endl;
+    mainss << "    : // Clobbers" << std::endl;
+    mainss << "      \"cc\", \"rax\", \"rbx\", \"rcx\", \"rdx\", \"rsi\", \"rdi\", \"%rsp\", \"r8\", \"r9\", \"r10\", \"r11\", \"r12\", \"r13\", \"r14\"" << std::endl;
+	mainss << "    );" << std::endl;
+	mainss << "}" << std::endl;
+
+    ss << headss.str();
+    ss << mainss.str();
 }
 
 std::string outBlock(BBlock& block, std::stringstream& ss, std::set<std::string>& outputSymbols, std::set<std::string>& inputSymbols){
-	std::string blockname = newLabel();
-	ss << "\""<< blockname << ":\\n\"" << std::endl;
-	for (ThreeAd& op : block.instructions){
-		convertThreeAd(op, ss, outputSymbols, inputSymbols);
-	}
-
-	
-	ss << std::endl;
-
-	std::stringstream subblock;
-	std::string bname;
-	if (block.falseExit != nullptr){
-		bname = outBlock(*block.falseExit, subblock, outputSymbols, inputSymbols);
-		ss << pre_in << "jne " << bname << post_in;
+    if (!block.label.empty()){
+        return block.label;
+    }
+    else {
+        block.label = newLabel();
         ss << std::endl;
-		ss << subblock.str();
-		subblock.str("");
-	}
-	if (block.trueExit != nullptr){
-		bname = outBlock(*block.trueExit, subblock, outputSymbols, inputSymbols);
-		ss << pre_in << "jmp " << bname << post_in;
-        ss << std::endl;
-		ss << subblock.str();
-	}
+        ss << pre_in << block.label << ":" << post_in;
+        for (ThreeAd& op : block.instructions){
+            convertThreeAd(op, ss, outputSymbols, inputSymbols);
+        }
 
-	return blockname;
+        std::stringstream falseblock;
+        std::stringstream trueblock;
+        std::string bname;
+        if (block.falseExit != nullptr){
+            bname = outBlock(*block.falseExit, falseblock, outputSymbols, inputSymbols);
+            ss << pre_in << "jne " << bname << post_in;
+        }
+        if (block.trueExit != nullptr){
+            bname = outBlock(*block.trueExit, trueblock, outputSymbols, inputSymbols);
+            ss << pre_in << "jmp " << bname << post_in;
+        }
+        else {
+            ss << pre_in << "jmp label_end" << post_in;
+        }
+        if (block.falseExit != nullptr)
+            ss << falseblock.str();
+        if (block.trueExit != nullptr)
+            ss << trueblock.str();
+
+    }
+    return block.label;
 }
 
 bool is_digits(const std::string &str)
@@ -232,7 +246,8 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::set<std::string>& o
             formatOutput(rhs, outputSymbols);
             formatOutput(lhs, outputSymbols);
 
-			ss << pre_in << "movq " << rhs << "," << lhs << post_in;
+			ss << pre_in << "movq " << rhs << ", " << "%%rax" << post_in;
+			ss << pre_in << "movq " << "%%rax" << ", " << lhs << post_in;
             }
 			break;
 		// Label
@@ -248,18 +263,12 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::set<std::string>& o
 
             // Set arguments
             ss << pre_in << "movq %[_a0], %%rdi" << post_in;
-            ss << pre_in << "movq %[_a1], %%rsi" << post_in;
-            ss << pre_in << "movq %[_a2], %%rdx" << post_in;
-            ss << pre_in << "movq %[_a3], %%rcx" << post_in;
+            //ss << pre_in << "movq %[_a1], %%rsi" << post_in;
+            //ss << pre_in << "movq %[_a2], %%rdx" << post_in;
+            //ss << pre_in << "movq %[_a3], %%rcx" << post_in;
 
-            // Call
-            ss << pre_in << "call *" << rhs << post_in;
             
-            // Reset arguments
-            ss << pre_in << "movq $0, %[_a0]" << post_in;
-            ss << pre_in << "movq $0, %[_a1]" << post_in;
-            ss << pre_in << "movq $0, %[_a2]" << post_in;
-            ss << pre_in << "movq $0, %[_a3]" << post_in;
+            ss << pre_in << "call *" << rhs << post_in;
             }
 			break;
         default:

@@ -44,6 +44,7 @@ class BBlock
     list<ThreeAd> instructions;
     BBlock *trueExit = nullptr;
     BBlock *falseExit = nullptr;
+    std::string label;
   
     BBlock();
 
