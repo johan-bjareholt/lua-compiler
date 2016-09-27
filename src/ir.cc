@@ -1,14 +1,3 @@
-/* DV1465 / DV1505 / DV1511 Lab-task example code.
-   (C) Dr Andrew Moss 2016
-   This code is released into the public domain.
-
-   You are free to use this code as a base for your second assignment after
-   the lab sessions (it is not required that you do so). Please be aware of
-   where the notes indicate that I have made the code shorter and easier to
-   read. These are points that are harder to write if you scale this approach
-   up to your assignment instead of defining a more appropriate class hierarchy
-   for your parse trees.
-*/
 #include <string>
 #include <iostream>
 #include <algorithm>
@@ -148,12 +137,6 @@ Expression *Variable(string name)
     return result;
 }
 
-Expression *TableItem(string name, Expression* index){
-    Expression* result = new Expression('T', index, NULL);
-    result->name = name;
-    return result;
-}
-
 Expression *Constant(int value)
 {
     Expression *result = new Expression('C',NULL,NULL);
@@ -167,22 +150,11 @@ Expression *String(std::string value){
     return result;
 }
 
-Expression *Label(std::string name)
-{
-    Expression *result = new Expression('l',NULL,NULL);
-    result->name = name;
-    return result;
-}
+/*
+  I probably shouldn't have a single Equality statement
+  (should have one for branching and one for a bool)
+*/
 
-Expression *Goto(std::string label)
-{
-    Expression *result = new Expression('g',NULL,NULL);
-    result->name = label;
-    return result;
-}
-
-/* Note: You almost certainly do not want to smash together Comparitor
-         and Expression classes in anything more complex than the lab */
 Expression *Equality(Expression *l, Expression *r)
 {
     Expression *result = new Expression('N',l,r);
@@ -334,7 +306,6 @@ void namePass(Expression *tree, map<Expression*,string> &nameMap)
 
 void emitPass(Expression *tree, map<Expression*,string> &nameMap, BBlock *out)
 {
-    // ...
     if (tree->kind == 'N'){
         emitPass(tree->left, nameMap, out);
         emitPass(tree->right, nameMap, out);
@@ -351,54 +322,33 @@ void emitPass(Expression *tree, map<Expression*,string> &nameMap, BBlock *out)
 string convert(Expression *in, BBlock *out)
 {
     map<Expression*,string> naming;
-    // TODO: Implement the pseudo code from lec-8 / slides 11 and 12 
-    //       in the empty procedures above and write the output into
-    //       the target BBlock object.
     namePass(in, naming);
     emitPass(in, naming, out);
     return naming[in];
 }
 
-// TASK: Fill this in to demonstrate understanding of gluing the expression-bit into
-//       the statement-bit
+void convertStatement(Statement *in, BBlock **current);
+
 void convertAssign(Statement *in, BBlock *out)
 {
-    // TODO: Convert the assignment statement passed in to 3-address instructions
-    //       to fill the target BBlock with.
     std::string name = in->expressions.at(0)->name;
     std::string val = convert(in->expressions.at(1), out);
     ThreeAd ta = ThreeAd(name,'c',name,val);
     out->instructions.push_back(ta);
 }
 
-// TASK: Basically - reuse the expression translation (two bits of psuedo code get
-//       called from convert() ).
 void convertComparitor(Expression *in, BBlock *out)
 {
-    // TODO: Convert the expression tree with a root comparitor operation into
-    //       3-address instructions and fill the target BBlock.
     std::string l = convert(in->left, out);
     std::string r = convert(in->right, out);
-    //std::cout << "left:" << l << std::endl;
-    //std::cout << "right:" << r << std::endl;
-    //std::string name = convert(in, out);
     std::string name = newName();
     ThreeAd ta = ThreeAd(name,'=',l,r);
     out->instructions.push_back(ta);
 }
 
-void convertStatement(Statement *in, BBlock **current);
 
-
-// TODO: Double indirection / current pointer / overwriting callers memory
-// Tutorially stuff. Fake 3 line example....
-// BIG TASK: invent this from slide 26 (lec8) slide 22 (lec8)
 void convertIf(Statement *in, BBlock **current)
 {
-    // TODO: Build the graph structure to implement the if statement
-    //       as shown in lecture 8 / slide 22 (and 25). Update the
-    //       caller's current pointer before returning.
-
     // Translate comparitor
     Expression* comparitor = in->expressions.back();
     convertComparitor(comparitor, *current);
@@ -540,7 +490,7 @@ void convertStatement(Statement *in, BBlock **current)
 // in a graph and implementing traversals.
 void dumpCFG(std::stringstream& ss, BBlock *start)
 {
-    set<BBlock *> done, todo;
+    set<BBlock*> done, todo;
     todo.insert(start);
     while(todo.size()>0)
     {

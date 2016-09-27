@@ -250,12 +250,6 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::set<std::string>& o
 			ss << pre_in << "movq " << "%%rax" << ", " << lhs << post_in;
             }
 			break;
-		// Label
-		case 'l':
-			break;
-		// Goto
-		case 'g':
-			break;
 		// Call function
 		case 'f':
             {
