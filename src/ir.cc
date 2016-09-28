@@ -105,12 +105,15 @@ void Expression::dump(std::stringstream& ss, int depth)
         case 'V':  ss << name  << endl; break;
         case 'C':  ss << value << endl; break;
 	    case 'S':  ss << name  << endl; break;
+	    case 'f':  ss << name  << endl; break;
 	    default: ss << "bad expression: " << kind << endl; break;
     }
     if(left!=NULL)
         left->dump(ss, depth+1);
     if(right!=NULL)
         right->dump(ss, depth+1);
+    for (Expression* exp : subexp)
+        exp->dump(ss, depth+1);
 }
 
 
@@ -147,6 +150,14 @@ Expression *Constant(int value)
 Expression *String(std::string value){
     Expression *result = new Expression('S',NULL,NULL);
     result->name = value;
+    return result;
+}
+
+Expression *FunctionCall(std::string name, std::list<Expression*> args){
+    Expression *result = new Expression('f',NULL,NULL);
+    result->name = name;
+    result->op = 'f';
+    result->subexp = args;
     return result;
 }
 
@@ -258,12 +269,14 @@ Statement *FunctionDef(std::string& name, std::list<Expression*> args, Statement
 	return result;
 }
 
+/*
 Statement *FunctionCall(Expression* funcname, Statement* args){
     Statement *result = new Statement('f');
     result->expressions.push_back(funcname);
     result->children.push_back(args);
     return result;
 }
+*/
 
 
 
@@ -288,8 +301,15 @@ string newStringName()
 void namePass(Expression *tree, map<Expression*,string> &nameMap)
 {
     std::string name;
+    // Exp is funccall
+    if (tree->kind == 'f'){
+        for (Expression* exp : tree->subexp){
+	        namePass(exp, nameMap);
+        }
+        name = newName();
+    }
     // Exp is binop
-    if (tree->left != nullptr && tree->right != nullptr){
+    else if (tree->left != nullptr && tree->right != nullptr){
 	    namePass(tree->left, nameMap);
 	    namePass(tree->right, nameMap);
 	    name = newName();
@@ -316,6 +336,17 @@ void emitPass(Expression *tree, map<Expression*,string> &nameMap, BBlock *out)
             nameMap[tree],
 	        tree->op, nameMap[tree->left],
 	        nameMap[tree->right]
+        );
+        out->instructions.push_back(*ta);
+    }
+    else if (tree->kind = 'f' && tree->op == 'f'){
+        for (Expression* exp : tree->subexp){
+            emitPass(exp, nameMap, out);
+        }
+	    ThreeAd* ta = new ThreeAd(
+            nameMap[tree],
+	        tree->op, 
+            tree->name, nameMap[tree->subexp.front()]
         );
         out->instructions.push_back(*ta);
     }
@@ -380,7 +411,7 @@ void convertFuncDef(Statement* in, BBlock *current){
 	convertStatement(body, &bodyBlock);
     funcdefs.push_back(bodyBlock);
 }
-
+/*
 void convertFuncCall(Statement* in, BBlock *current){
     // Set args
 	Statement* args = in->children.at(0);
@@ -400,6 +431,7 @@ void convertFuncCall(Statement* in, BBlock *current){
     ThreeAd call = ThreeAd(retname,'f',name,name);
     current->instructions.push_back(call);
 }
+*/
 
 void convertSeq(Statement *in, BBlock **current)
 {
@@ -458,6 +490,10 @@ void convertLoop(Statement *in, BBlock **current){
     (*current) = nextBlock;
 }
 
+void convertExpressions(Statement *in, BBlock *current){
+    for(Expression* e: in->expressions)
+        convert(e,current);
+}
 
 // Despatch point
 void convertStatement(Statement *in, BBlock **current)
@@ -470,8 +506,8 @@ void convertStatement(Statement *in, BBlock **current)
         case 'F':
             convertFuncDef(in,*current);	// Does not update current
             break;
-        case 'f':
-            convertFuncCall(in,*current);  // Does not update current
+        case 'E':
+            convertExpressions(in, *current); // Does not update current
             break;
         case 'L':
             convertLoop(in,current);

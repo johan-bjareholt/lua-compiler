@@ -50,8 +50,8 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
     
     // Standard functions
     headss << "// Standard functions" << std::endl;
-	headss << "#include <cstdlib>" << std::endl;
-	headss << "#include <cstdio>" << std::endl;
+	headss << "#include <stdlib.h>" << std::endl;
+	headss << "#include <stdio.h>" << std::endl;
     headss << "int io_write(const char* msg){puts(msg); return 0;}" << std::endl;
     headss << "int print(int* num){char nstr[15]; sprintf(nstr,\"%d\", num); io_write(nstr); return 0;}" << std::endl;
     headss << "int io_read(const char* msg){ return 0;}" << std::endl;
@@ -59,20 +59,8 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
     mainss << "int main(){" << std::endl;
 
 	std::set<std::string> inputSymbols = std::set<std::string>();
-    inputSymbols.insert("print");
-    inputSymbols.insert("io_read");
-    inputSymbols.insert("io_write");
 	
     std::set<std::string> outputSymbols = std::set<std::string>();
-    // Regs
-    vars.insert("_a0");
-    //vars.insert("_a1");
-    //vars.insert("_a2");
-    //vars.insert("_a3");
-    outputSymbols.insert("_a0");
-    //outputSymbols.insert("_a1");
-    //outputSymbols.insert("_a2");
-    //outputSymbols.insert("_a3");
 
 	bodyss << "    asm(" << std::endl;
     bodyss << "    // main" << std::endl;
@@ -90,8 +78,13 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
     
     // Work ints
     mainss << "    // Working vars decl" << std::endl;
-	for (std::string symbol : vars){
-		mainss << "    long " << symbol << ";" << std::endl;
+	mainss << "    long ";
+	for (auto iter = vars.begin(); iter != vars.end(); iter++){
+	    mainss << *iter;
+        if (std::next(iter) != vars.end())
+            mainss << ", ";
+        else
+            mainss << ";" << std::endl;
 	}
     
     // Strings
@@ -103,21 +96,26 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
 	mainss << bodyss.str();
 	mainss << "    : // Output symbols" << std::endl;
 	for (auto iter = outputSymbols.begin(); iter!=outputSymbols.end(); iter++){
-		mainss << "      [" << *iter << "] \"+g\" (" << *iter << ")";
+        if (inputSymbols.find(*iter) != inputSymbols.end()){
+            inputSymbols.erase(*iter);
+		    mainss << "      [" << *iter << "] \"+m\" (" << *iter << ")";
+        }
+        else
+		    mainss << "      [" << *iter << "] \"=m\" (" << *iter << ")";
 		if (std::next(iter) != outputSymbols.end())
 			mainss << ",";
 		mainss << std::endl;
 	}
 	mainss << "    : // Input symbols" << std::endl;
 	for (auto iter = inputSymbols.begin(); iter!=inputSymbols.end(); iter++){
-		mainss << "      [" << *iter << "] \"r\" (" << *iter << ")";
+		mainss << "      [" << *iter << "] \"m\" (" << *iter << ")";
 		if (std::next(iter) != inputSymbols.end())
 			mainss << ",";
 		mainss << std::endl;
 	}
 
     mainss << "    : // Clobbers" << std::endl;
-    mainss << "      \"cc\", \"rax\", \"rbx\", \"rcx\", \"rdx\", \"rsi\", \"rdi\", \"%rsp\", \"r8\", \"r9\", \"r10\", \"r11\"" << std::endl;
+    mainss << "      \"cc\", \"rax\", \"rbx\", \"rcx\", \"rdx\", \"rsi\", \"rdi\", \"%rsp\"" << std::endl;
 	mainss << "    );" << std::endl;
 	mainss << "}" << std::endl;
 
@@ -166,14 +164,7 @@ bool is_digits(const std::string &str)
 }
 
 
-void formatInput(std::string& val, std::set<std::string>& inputSymbols){
-    std::stringstream tempss;
-	inputSymbols.insert(val);
-	tempss << "\%[" << val << "]";
-	val = tempss.str();
-}
-
-void formatOutput(std::string& val, std::set<std::string>& outputSymbols){
+void formatSymbol(std::string& val, std::set<std::string>& symbolTable){
     if (is_digits(val)){
         std::stringstream tempss;
         tempss << "$" << val;
@@ -181,13 +172,13 @@ void formatOutput(std::string& val, std::set<std::string>& outputSymbols){
 	}
 	else {
         if (val[0] == '"'){
-            outputSymbols.erase(val);
+            symbolTable.erase(val);
             val = newString(val);
         }
         else {
             regVar(val);
         }
-	    outputSymbols.insert(val);
+	    symbolTable.insert(val);
         std::stringstream tempss;
 		tempss << "\%[" << val << "]";
 		val = tempss.str();
@@ -203,63 +194,68 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::set<std::string>& o
 	switch(op.op){
 		case '+':
 			{
-            formatOutput(rhs, outputSymbols);
-            formatOutput(lhs, outputSymbols);
+            formatSymbol(rhs, inputSymbols);
+            formatSymbol(lhs, inputSymbols);
+            formatSymbol(op.result, outputSymbols);
 
 			ss << pre_in << "movq " << rhs << ", %%rax" << post_in;
 			ss << pre_in << "addq " << lhs << ", %%rax" << post_in;
-			ss << pre_in << "movq " << "%%rax , %[" << op.result << "]" << post_in;
+			ss << pre_in << "movq " << "%%rax , " << op.result << post_in;
 			}
 			break;
 		case '-':
 			{
-            formatOutput(rhs, outputSymbols);
-            formatOutput(lhs, outputSymbols);
+            formatSymbol(rhs, inputSymbols);
+            formatSymbol(lhs, inputSymbols);
+            formatSymbol(op.result, outputSymbols);
 
 			ss << pre_in << "movq " << lhs << ", %%rax" << post_in;
 			ss << pre_in << "subq " << rhs << ", %%rax" << post_in;
-			ss << pre_in << "movq " << "%%rax , %[" << op.result << "]" << post_in;
+			ss << pre_in << "movq " << "%%rax , " << op.result << post_in;
 			}
 			break;
 		case '*':
             {
-            formatOutput(rhs, outputSymbols);
-            formatOutput(lhs, outputSymbols);
+            formatSymbol(rhs, inputSymbols);
+            formatSymbol(lhs, inputSymbols);
+            formatSymbol(op.result, outputSymbols);
 
 			ss << pre_in << "movq " << rhs << ", %%rax" << post_in;
 			ss << pre_in << "movq " << lhs << ", %%rbx" << post_in;
 			ss << pre_in << "imulq " << "%%rbx" << ", %%rax" << post_in;
-			ss << pre_in << "movq " << "%%rax" << ", %[" << op.result << "]"<< post_in;
+			ss << pre_in << "movq " << "%%rax" << ", " << op.result << post_in;
             }
 			break;
         case '/':
             {
-            formatOutput(rhs, outputSymbols);
-            formatOutput(lhs, outputSymbols);
+            formatSymbol(rhs, inputSymbols);
+            formatSymbol(lhs, inputSymbols);
+            formatSymbol(op.result, outputSymbols);
 			
             ss << pre_in << "movq " << rhs << ", %%rbx" << post_in;
             ss << pre_in << "movq " << lhs << ", %%rax" << post_in;
 			ss << pre_in << "cqto" << post_in; // Sign extend %rax to %rdx:rax
 			ss << pre_in << "idivq " << "%%rbx" << post_in;
-			ss << pre_in << "movq " << "%%rax" << ", %[" << op.result << "]"<< post_in;
+			ss << pre_in << "movq " << "%%rax" << ", " << op.result << post_in;
             }
             break;
         case '%':
             {
-            formatOutput(rhs, outputSymbols);
-            formatOutput(lhs, outputSymbols);
+            formatSymbol(rhs, inputSymbols);
+            formatSymbol(lhs, inputSymbols);
+            formatSymbol(op.result, outputSymbols);
 			
             ss << pre_in << "movq " << rhs << ", %%rbx" << post_in;
             ss << pre_in << "movq " << lhs << ", %%rax" << post_in;
 			ss << pre_in << "cqto" << post_in; // Sign extend %rax to %rdx:rax
 			ss << pre_in << "idivq " << "%%rbx" << post_in;
-			ss << pre_in << "movq " << "%%rdx" << ", %[" << op.result << "]"<< post_in;
+			ss << pre_in << "movq " << "%%rdx" << ", " << op.result << post_in;
             }
             break;
 		case '=':
 			{
-            formatOutput(rhs, outputSymbols);
-            formatOutput(lhs, outputSymbols);
+            formatSymbol(rhs, inputSymbols);
+            formatSymbol(lhs, inputSymbols);
 
 			ss << pre_in << "movq " << rhs << ", %%rax" << post_in;
 			ss << pre_in << "cmp "  << lhs << ", %%rax" << post_in;
@@ -268,8 +264,8 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::set<std::string>& o
 		// Copy
 		case 'c':
             {
-            formatOutput(rhs, outputSymbols);
-            formatOutput(lhs, outputSymbols);
+            formatSymbol(rhs, inputSymbols);
+            formatSymbol(lhs, outputSymbols);
 
 			ss << pre_in << "movq " << rhs << ", " << "%%rax" << post_in;
 			ss << pre_in << "movq " << "%%rax" << ", " << lhs << post_in;
@@ -278,19 +274,17 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::set<std::string>& o
 		// Call function
 		case 'f':
             {
-            formatInput(rhs, inputSymbols);
-            //formatOutput(op.result, outputSymbols);
+            formatSymbol(rhs, inputSymbols);
+            formatSymbol(op.result, outputSymbols);
 
             // Set arguments
-            ss << pre_in << "movq %[_a0], %%rdi" << post_in;
-            //ss << pre_in << "movq %[_a1], %%rsi" << post_in;
-            //ss << pre_in << "movq %[_a2], %%rdx" << post_in;
-            //ss << pre_in << "movq %[_a3], %%rcx" << post_in;
+            // FIXME: Only supports one argument :/
+            ss << pre_in << "movq " << rhs << ", %%rdi" << post_in;
            
             // Call
-            ss << pre_in << "call *" << rhs << post_in;
+            ss << pre_in << "call " << lhs << post_in;
             // Move return 
-            //ss << pre_in << "movq " << "%%rax, " << op.result << post_in;
+            ss << pre_in << "movq " << "%%rax, " << op.result << post_in;
             }
 			break;
         default:

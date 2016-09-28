@@ -49,6 +49,7 @@ class Expression
     // Implicit union of binary operators, constants and variables.
     public:
     class Expression *left, *right;
+    std::list<Expression*> subexp;
     char kind, op;
     int value;
     string name;
@@ -71,6 +72,8 @@ Expression *Variable(string name);
 Expression *Constant(int value);
 
 Expression *String(string name);
+
+Expression *FunctionCall(std::string name, std::list<Expression*> args);
 
 Expression *Equality(Expression *l, Expression *r);
 
@@ -108,7 +111,7 @@ Statement *Repeat(Expression* expression, Statement* body);
 
 Statement *FunctionDef(std::string& name, std::list<Expression*> args, Statement* body);
 
-Statement *FunctionCall(Expression* funcname, Statement* args);
+//Statement *FunctionCall(Expression* funcname, Statement* args);
 
 
 

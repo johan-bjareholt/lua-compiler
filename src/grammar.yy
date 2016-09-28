@@ -42,10 +42,10 @@
 %type <std::list<std::string>> namelist
 
 %type <Statement*> function
-%type <Statement*> functioncall
 %type <Statement*> funcbody
+%type <Expression*> functioncall
 %type <std::list<Expression*>> parlist
-%type <Statement*> args
+%type <std::list<Expression*>> args
 
 %type <Statement*> tableconstructor
 
@@ -223,7 +223,8 @@ stat	: varlist ASSIGN explist {
 			$$ = FunctionDef($3, {}, $4);
 		}
 		| functioncall {
-			$$ = $1;
+			$$ = new Statement('E');
+            $$->expressions.push_back($1);
 		}
 		| DO block END {
 			$$ = $2;
@@ -384,9 +385,10 @@ exp		: NIL {
 		| string {
 			$$ = $1; 
 		}
-		| TDOT {
+		/*| TDOT {
+            // TODO: Implement
 			//$$ = Node("exp", $1);
-		}
+		}*/
 		| function {
 			//$$ = Node("exp","function");
 			//$$.children.push_back($1);
@@ -395,6 +397,7 @@ exp		: NIL {
 			$$ = $1;
 		}
 		/*| tableconstructor {
+            // TODO: Implement
             //$$ = $1;
 			//$$ = Node("exp","tableconstructor");
 			//$$.children.push_back($1);
@@ -418,7 +421,7 @@ prefixexp: var {
 			$$ = $1;
 		}
 		| functioncall {
-			//$$ = $1;
+			$$ = $1;
 		}
 		| PARANTHESES_L exp PARANTHESES_R {
 			$$ = $2;
@@ -432,17 +435,10 @@ function: FUNCTION funcbody {
 		;
 
 functioncall: prefixexp args {
-			//$$ = Node("funccall","");
-			//$$.children.push_back($1);
-			//$$.children.push_back($2);
-			$$ = FunctionCall($1, $2);
+			$$ = FunctionCall($1->name, $2);
 		}
 		| prefixexp COLON NAME args {
-			//$$ = Node("funccall","2");
-			//$$.children.push_back($1);
-			//$$.children.push_back($3);
-			//$$.children.push_back($4);
-			$$ = FunctionCall($1, $4);
+			$$ = FunctionCall($1->name, $4);
 		}
 		;
 
@@ -484,21 +480,21 @@ parlist	: namelist {
 		;
 
 args	: PARANTHESES_L PARANTHESES_R {
-	 		$$ = new Statement('S');
+	 		$$ = std::list<Expression*>();
 	 	}
 		| PARANTHESES_L explist PARANTHESES_R {
-			$$ = new Statement('S');
+	 		$$ = std::list<Expression*>();
 			for (Expression* exp : $2){
-				$$->expressions.push_back(exp);
+				$$.push_back(exp);
 			}
-			//$$ = $2;
 		}
-		| tableconstructor {
-			$$ = $1;
+        | tableconstructor {
+            // TODO: Implement
+			//$$ = $1;
 		}
 		| string {
-			$$ = new Statement('S');
-			$$->expressions.push_back($1);
+			$$ = std::list<Expression*>();
+			$$.push_back($1);
 		}
 		;
 

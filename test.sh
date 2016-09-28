@@ -15,7 +15,7 @@ function ctest() {
 		echo "Translation error: $1"
 		failedtests=$failedtests$1
     else
-        g++ test.c
+        gcc test.c
         if [ $? -ne 0 ]; then
             echo "Compilation error: $1"
             failedtests=$failedtests$1
