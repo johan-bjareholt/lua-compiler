@@ -1,15 +1,18 @@
 a=1
 if a==1 then
-    print("correct")
+    io.write("correct")
 else
-    print("invalid")
+    io.write("invalid")
 end
 
 if a==2 then
-    print("invalid")
+    io.write("invalid")
 else
-    print("correct")
+    io.write("correct")
 end
 
-print("Done")
+c="correct"
+io.write(c)
+
+io.write("Done")
 

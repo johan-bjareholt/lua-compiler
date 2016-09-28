@@ -316,7 +316,7 @@ var		: NAME {
 		| prefixexp DOT NAME {
 			// TODO: Implement
             std::stringstream ss;
-            ss << $1->name << "." << $3;
+            ss << $1->name << "_" << $3;
 			
             $$ = $1;
 			$$->name = ss.str();

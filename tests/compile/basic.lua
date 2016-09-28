@@ -1,3 +1,4 @@
 msg="a test message"
 myint=123
-print(msg)
+print(myint)
+io.write(msg)

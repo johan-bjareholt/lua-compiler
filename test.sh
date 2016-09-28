@@ -10,21 +10,37 @@ testcount=0
 function ctest() {
 	testcount=$(($testcount+1))
 	echo "Crash testing $1"
-	./lua $1
-	if [ $? -eq 0 ]; then
-		testpass=$(($testpass+1))
-	else
-		echo "FAILED: $1"
+	./lua $1 -o test.c
+	if [ $? -ne 0 ]; then
+		echo "Translation error: $1"
 		failedtests=$failedtests$1
+    else
+        g++ test.c
+        if [ $? -ne 0 ]; then
+            echo "Compilation error: $1"
+            failedtests=$failedtests$1
+        else
+            ./a.out
+            if [ $? -ne 0 ]; then
+                echo "Runtime error: $1"
+                failedtests=$failedtests$1
+            else
+                testpass=$(($testpass+1))
+            fi
+        fi
 	fi
 }
 
-ctest "tests/grammar/test1.lua"
-ctest "tests/grammar/test2.lua"
-ctest "tests/grammar/test3.lua"
-ctest "tests/grammar/test4.lua"
-#ctest "tests/grammar/test5.lua"
-ctest "tests/grammar/test6.lua"
-ctest "tests/grammar/misc.lua"
+ctest "tests/compile/arithmetic.lua"
+ctest "tests/compile/basic.lua"
+ctest "tests/compile/if.lua"
+ctest "tests/compile/print.lua"
+
+ctest "tests/ass/test1.lua"
+ctest "tests/ass/test2.lua"
+ctest "tests/ass/test3.lua"
+ctest "tests/ass/test4.lua"
+ctest "tests/ass/test6.lua"
+#ctest "tests/ass/test5.lua"
 
 printf "%d/%d crashtests passed\n" $testpass $testcount

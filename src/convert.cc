@@ -50,13 +50,18 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
     
     // Standard functions
     headss << "// Standard functions" << std::endl;
-	headss << "#include <iostream>" << std::endl;
-    headss << "void print(const char* msg){puts(msg);}" << std::endl;
+	headss << "#include <cstdlib>" << std::endl;
+	headss << "#include <cstdio>" << std::endl;
+    headss << "int io_write(const char* msg){puts(msg); return 0;}" << std::endl;
+    headss << "int print(int* num){char nstr[15]; sprintf(nstr,\"%d\", num); io_write(nstr); return 0;}" << std::endl;
+    headss << "int io_read(const char* msg){ return 0;}" << std::endl;
 	
     mainss << "int main(){" << std::endl;
 
 	std::set<std::string> inputSymbols = std::set<std::string>();
     inputSymbols.insert("print");
+    inputSymbols.insert("io_read");
+    inputSymbols.insert("io_write");
 	
     std::set<std::string> outputSymbols = std::set<std::string>();
     // Regs
@@ -107,12 +112,12 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
 	for (auto iter = inputSymbols.begin(); iter!=inputSymbols.end(); iter++){
 		mainss << "      [" << *iter << "] \"r\" (" << *iter << ")";
 		if (std::next(iter) != inputSymbols.end())
-			ss << ",";
+			mainss << ",";
 		mainss << std::endl;
 	}
 
     mainss << "    : // Clobbers" << std::endl;
-    mainss << "      \"cc\", \"rax\", \"rbx\", \"rcx\", \"rdx\", \"rsi\", \"rdi\", \"%rsp\", \"r8\", \"r9\", \"r10\", \"r11\", \"r12\", \"r13\", \"r14\"" << std::endl;
+    mainss << "      \"cc\", \"rax\", \"rbx\", \"rcx\", \"rdx\", \"rsi\", \"rdi\", \"%rsp\", \"r8\", \"r9\", \"r10\", \"r11\"" << std::endl;
 	mainss << "    );" << std::endl;
 	mainss << "}" << std::endl;
 
@@ -211,9 +216,9 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::set<std::string>& o
             formatOutput(rhs, outputSymbols);
             formatOutput(lhs, outputSymbols);
 
-			ss << pre_in << "movq " << rhs << ", %%rax" << post_in;
-			ss << pre_in << "subq " << lhs << ", %%rax" << post_in;
-			ss << pre_in << "movq " << "%%rax , [" << op.result << "]" << post_in;
+			ss << pre_in << "movq " << lhs << ", %%rax" << post_in;
+			ss << pre_in << "subq " << rhs << ", %%rax" << post_in;
+			ss << pre_in << "movq " << "%%rax , %[" << op.result << "]" << post_in;
 			}
 			break;
 		case '*':
@@ -221,14 +226,34 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::set<std::string>& o
             formatOutput(rhs, outputSymbols);
             formatOutput(lhs, outputSymbols);
 
-            
+			ss << pre_in << "movq " << rhs << ", %%rax" << post_in;
+			ss << pre_in << "movq " << lhs << ", %%rbx" << post_in;
+			ss << pre_in << "imulq " << "%%rbx" << ", %%rax" << post_in;
+			ss << pre_in << "movq " << "%%rax" << ", %[" << op.result << "]"<< post_in;
             }
 			break;
         case '/':
             {
             formatOutput(rhs, outputSymbols);
             formatOutput(lhs, outputSymbols);
-
+			
+            ss << pre_in << "movq " << rhs << ", %%rbx" << post_in;
+            ss << pre_in << "movq " << lhs << ", %%rax" << post_in;
+			ss << pre_in << "cqto" << post_in; // Sign extend %rax to %rdx:rax
+			ss << pre_in << "idivq " << "%%rbx" << post_in;
+			ss << pre_in << "movq " << "%%rax" << ", %[" << op.result << "]"<< post_in;
+            }
+            break;
+        case '%':
+            {
+            formatOutput(rhs, outputSymbols);
+            formatOutput(lhs, outputSymbols);
+			
+            ss << pre_in << "movq " << rhs << ", %%rbx" << post_in;
+            ss << pre_in << "movq " << lhs << ", %%rax" << post_in;
+			ss << pre_in << "cqto" << post_in; // Sign extend %rax to %rdx:rax
+			ss << pre_in << "idivq " << "%%rbx" << post_in;
+			ss << pre_in << "movq " << "%%rdx" << ", %[" << op.result << "]"<< post_in;
             }
             break;
 		case '=':
@@ -254,21 +279,24 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::set<std::string>& o
 		case 'f':
             {
             formatInput(rhs, inputSymbols);
+            //formatOutput(op.result, outputSymbols);
 
             // Set arguments
             ss << pre_in << "movq %[_a0], %%rdi" << post_in;
             //ss << pre_in << "movq %[_a1], %%rsi" << post_in;
             //ss << pre_in << "movq %[_a2], %%rdx" << post_in;
             //ss << pre_in << "movq %[_a3], %%rcx" << post_in;
-
-            
+           
+            // Call
             ss << pre_in << "call *" << rhs << post_in;
+            // Move return 
+            //ss << pre_in << "movq " << "%%rax, " << op.result << post_in;
             }
 			break;
         default:
-            std::cout << "Unknown 3ac" << std::endl;
+            std::cout << "Unknown 3ac: " << op.op << std::endl;
             exit(-1);
-	}
+	 }
 }
 
 

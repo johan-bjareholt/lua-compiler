@@ -288,14 +288,17 @@ string newStringName()
 void namePass(Expression *tree, map<Expression*,string> &nameMap)
 {
     std::string name;
+    // Exp is binop
     if (tree->left != nullptr && tree->right != nullptr){
 	    namePass(tree->left, nameMap);
 	    namePass(tree->right, nameMap);
 	    name = newName();
     }
     else {
+        // Exp is string
         if (tree->name == "")
             name = to_string(tree->value);
+        // Exp is var
 	    else
             name = tree->name;
     }
@@ -393,7 +396,8 @@ void convertFuncCall(Statement* in, BBlock *current){
     }
 	// Call
     std::string name = in->expressions.at(0)->name;
-    ThreeAd call = ThreeAd(newName(),'f',name,name);
+    std::string retname = newName();
+    ThreeAd call = ThreeAd(retname,'f',name,name);
     current->instructions.push_back(call);
 }
 
