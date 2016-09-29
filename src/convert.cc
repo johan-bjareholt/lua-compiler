@@ -52,9 +52,9 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
     headss << "// Standard functions" << std::endl;
 	headss << "#include <stdlib.h>" << std::endl;
 	headss << "#include <stdio.h>" << std::endl;
-    headss << "int io_write(const char* msg){puts(msg); return 0;}" << std::endl;
-    headss << "int print(int* num){char nstr[15]; sprintf(nstr,\"%d\", num); io_write(nstr); return 0;}" << std::endl;
-    headss << "int io_read(const char* msg){ return 0;}" << std::endl;
+    headss << "long io_write(const char* msg){puts(msg); return 0;}" << std::endl;
+    headss << "long print(int* num){char nstr[15]; sprintf(nstr,\"%d\", num); io_write(nstr); return 0;}" << std::endl;
+    headss << "long io_read(const char* msg){ long num; scanf(\"%ld\", &num); return num; }" << std::endl;
 	
     mainss << "int main(){" << std::endl;
 
