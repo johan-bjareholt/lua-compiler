@@ -226,7 +226,7 @@ Statement *Loop(Statement* pre, Expression* check, Statement* body, Statement* p
     return result;
 }
 
-Statement *For(std::string varname,Expression* varval, Expression* boundry, Expression* step, Statement* body){
+Statement *For(std::string varname, Expression* varval, Expression* boundry, Expression* step, Statement* body){
     // Get statement pointer as address
     std::ostringstream address;
     address << "_l";
@@ -237,7 +237,16 @@ Statement *For(std::string varname,Expression* varval, Expression* boundry, Expr
     Statement *pre = new Statement('S');
 	pre->children.push_back(Assign(varname, varval));
 	// Loop body (if,code,increment,if etc.)
-    Expression* check = BinOp('=',Variable(varname),boundry);
+    char checktoken = '=';
+    if (step->value > 0)
+        checktoken = '>';
+    else if (step->value < 0)
+        checktoken = '<';
+    else {
+        std::cout << "Step value in for loop cannot be 0" << std::endl;
+        exit(0);
+    }
+    Expression* check = BinOp(checktoken,Variable(varname),boundry);
     // Increment
 	Statement *post = Assign(varname, BinOp('+',Variable(varname),step));
     // Return
@@ -376,7 +385,7 @@ void convertComparitor(Expression *in, BBlock *out)
     std::string l = convert(in->left, out);
     std::string r = convert(in->right, out);
     std::string name = newName();
-    ThreeAd ta = ThreeAd(name,'=',l,r);
+    ThreeAd ta = ThreeAd(name,in->op,l,r);
     out->instructions.push_back(ta);
 }
 
@@ -477,8 +486,8 @@ void convertLoop(Statement *in, BBlock **current){
     (*current) = loopBlock;
     Expression* comparitor = in->expressions.back();
     convertComparitor(comparitor, *current);
-    (*current)->trueExit = bodyBlock;
-    (*current)->falseExit = nextBlock;
+    (*current)->falseExit = bodyBlock;
+    (*current)->trueExit = nextBlock;
 
     // Set body block
     (*current) = bodyBlock;

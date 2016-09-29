@@ -6,39 +6,44 @@
 static const std::string pre_in = "    \"    ";
 static const std::string post_in = "\\n\"\n";
 
+enum VAR_TYPE {
+    VT_STRING,
+    VT_INT,
+    VT_FUNCTION,
+    VT_LABEL
+};
 
-std::list<std::pair<int, std::string>> strings;
+static std::map<std::string, std::pair<int, std::string>> vars2;
+
+static void addVar(std::string name, int type, std::string value){
+    std::pair<int, std::string> var(type, value);
+    std::pair<std::string, std::pair<int, std::string>> entry(name, var);
+    vars2.insert(entry);
+}
+
 static int stringc = 0;
 static std::string newString(std::string str){
     std::stringstream tempss;
     tempss << "_s" << stringc;
-    strings.push_back(std::pair<int, std::string>(stringc, str));
+    std::string varname = tempss.str();
+    addVar(varname, VT_STRING, str);
     stringc++;
-    return tempss.str();
+    return varname;
 }
 
-std::list<std::string> ints;
-static int intc = 0;
-static std::string newInt(std::string str){
-    std::stringstream tempss;
-    tempss << "_i" << intc;
-    ints.push_back(tempss.str());
-    intc++;
-    return tempss.str();
-}
-
-std::set<std::string> vars;
 static int varc = 0;
 static void regVar(std::string str){
-    vars.insert(str);
+    addVar(str, VT_INT, "");
 }
 
 static int labelcount = 0;
 std::string newLabel(){
 	std::stringstream ss;
 	ss << "label" << to_string(labelcount);
+    std::string varname = ss.str();
+    addVar(varname, VT_LABEL, "");
 	labelcount++;
-	return ss.str();
+	return varname;
 }
 
 
@@ -52,8 +57,10 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
     headss << "// Standard functions" << std::endl;
 	headss << "#include <stdlib.h>" << std::endl;
 	headss << "#include <stdio.h>" << std::endl;
-    headss << "long io_write(const char* msg){puts(msg); return 0;}" << std::endl;
-    headss << "long print(int* num){char nstr[15]; sprintf(nstr,\"%d\", num); io_write(nstr); return 0;}" << std::endl;
+    headss << "long io_write(const char* msg){printf(msg); return 0;}" << std::endl;
+    headss << "long io_write_i(long num){ printf(\"%ld\", num); return 0;}" << std::endl;
+    headss << "long print(const char* msg){ printf(\"%s\\n\", msg); return 0;}" << std::endl;
+    headss << "long print_i(long num){ printf(\"%ld\\n\", num);; return 0;}" << std::endl;
     headss << "long io_read(const char* msg){ long num; scanf(\"%ld\", &num); return num; }" << std::endl;
 	
     mainss << "int main(){" << std::endl;
@@ -62,7 +69,7 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
 	
     std::set<std::string> outputSymbols = std::set<std::string>();
 
-	bodyss << "    asm(" << std::endl;
+	bodyss << "    asm (" << std::endl;
     bodyss << "    // main" << std::endl;
 	outBlock(startblock, bodyss, outputSymbols, inputSymbols);
     //outputSymbols.insert("intformat");
@@ -76,22 +83,32 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
     bodyss << std::endl;
     bodyss << pre_in << "label_end:" << post_in;
     
-    // Work ints
-    mainss << "    // Working vars decl" << std::endl;
-	mainss << "    long ";
-	for (auto iter = vars.begin(); iter != vars.end(); iter++){
-	    mainss << *iter;
-        if (std::next(iter) != vars.end())
-            mainss << ", ";
-        else
-            mainss << ";" << std::endl;
-	}
-    
-    // Strings
-    mainss << "    // Strings decl" << std::endl;
-    for (std::pair<int, std::string> strp : strings){
-        mainss << "    const char* " << "_s" << strp.first << " = " << strp.second << ";"<< std::endl;
+    // Define storage variables
+    for (auto var : vars2){
+        std::string name = var.first;
+        std::string val = var.second.second;
+        int type = var.second.first;
+        switch (type){
+            case VT_STRING:
+                mainss << "    const char* " << name << " = " << val << ";"<< std::endl;
+                break;
+            case VT_INT:
+	            mainss << "    long " << name << ";" << std::endl;
+                break;
+            case VT_LABEL:
+                break;
+            default:
+                std::cout << "Unknown vartype" << std::endl;
+                exit(1);
+                break;
+        }
     }
+
+    // Strings
+    //mainss << "    // Strings decl" << std::endl;
+    //for (std::pair<int, std::string> strp : strings){
+    //    mainss << "    const char* " << "_s" << strp.first << " = " << strp.second << ";"<< std::endl;
+    //}
 
 	mainss << bodyss.str();
 	mainss << "    : // Output symbols" << std::endl;
@@ -115,7 +132,8 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
 	}
 
     mainss << "    : // Clobbers" << std::endl;
-    mainss << "      \"cc\", \"rax\", \"rbx\", \"rcx\", \"rdx\", \"rsi\", \"rdi\", \"%rsp\"" << std::endl;
+    mainss << "      \"cc\", \"rax\", \"rbx\", \"rcx\", \"rdx\", \"rsi\", \"rdi\", \"rsp\"" << std::endl;
+    //mainss << "      ,\"r8\", \"r9\", \"r10\", \"r11\", \"r12\", \"r13\", \"r14\", \"r15\"" << std::endl;
 	mainss << "    );" << std::endl;
 	mainss << "}" << std::endl;
 
@@ -131,16 +149,31 @@ std::string outBlock(BBlock& block, std::stringstream& ss, std::set<std::string>
         block.label = newLabel();
         ss << std::endl;
         ss << pre_in << block.label << ":" << post_in;
+        ThreeAd* last_op = nullptr;
         for (ThreeAd& op : block.instructions){
             convertThreeAd(op, ss, outputSymbols, inputSymbols);
+            last_op = &op;
         }
 
         std::stringstream falseblock;
         std::stringstream trueblock;
         std::string bname;
-        if (block.falseExit != nullptr){
+        if (block.falseExit != nullptr && last_op){
             bname = outBlock(*block.falseExit, falseblock, outputSymbols, inputSymbols);
-            ss << pre_in << "jne " << bname << post_in;
+            switch (last_op->op){
+                case '=':
+                    ss << pre_in << "jne " << bname << post_in;
+                    break;
+                case '<':
+                    ss << pre_in << "jle " << bname << post_in;
+                    break;
+                case '>':
+                    ss << pre_in << "jge " << bname << post_in;
+                    break;
+                default:
+                    std::cout << "Unreachable block: " << bname << std::endl;
+                    break;
+            }
         }
         if (block.trueExit != nullptr){
             bname = outBlock(*block.trueExit, trueblock, outputSymbols, inputSymbols);
@@ -253,6 +286,8 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::set<std::string>& o
             }
             break;
 		case '=':
+        case '<':
+        case '>':
 			{
             formatSymbol(rhs, inputSymbols);
             formatSymbol(lhs, inputSymbols);
@@ -274,15 +309,25 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::set<std::string>& o
 		// Call function
 		case 'f':
             {
-            formatSymbol(rhs, inputSymbols);
+            // FIXME: Ugly type check and convertion
+            std::string funcname = lhs;
+            auto arginfo = vars2.find(rhs);
+            if ((funcname == "print" || funcname == "io_write") && (arginfo != vars2.end() && (*arginfo).second.first == VT_INT)){
+                if (lhs == "print")
+                    funcname = "print_i";
+                else
+                    funcname = "io_write_i";
+            }
+            
             formatSymbol(op.result, outputSymbols);
+            formatSymbol(rhs, inputSymbols);
 
             // Set arguments
-            // FIXME: Only supports one argument :/
+            // FIXME: Only supports one argument :(
             ss << pre_in << "movq " << rhs << ", %%rdi" << post_in;
            
             // Call
-            ss << pre_in << "call " << lhs << post_in;
+            ss << pre_in << "call " << funcname << post_in;
             // Move return 
             ss << pre_in << "movq " << "%%rax, " << op.result << post_in;
             }
