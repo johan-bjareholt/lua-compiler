@@ -1,4 +1,4 @@
-NAME=lua
+NAME=comp
 MAIN=src/main.cc
 OBJ=obj/ir.o obj/convert.o obj/grammar.tab.o obj/lex.yy.c
 CPPFLAGS= --std=c++11 -g -Isrc/ -Iobj/
@@ -25,4 +25,4 @@ obj/lex.yy.c: src/lex.ll obj/grammar.tab.cc
 .PHONY: clean
 clean:
 	rm -rf obj
-	rm -f lua
+	rm -f $(NAME)

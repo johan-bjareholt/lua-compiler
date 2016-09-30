@@ -10,12 +10,12 @@ testcount=0
 function ctest() {
 	testcount=$(($testcount+1))
 	echo "Crash testing $1"
-	./lua $1 -o test.c
+	./comp $1
 	if [ $? -ne 0 ]; then
 		echo "Translation error: $1"
 		failedtests=$failedtests$1
     else
-        gcc test.c
+        gcc target.c
         if [ $? -ne 0 ]; then
             echo "Compilation error: $1"
             failedtests=$failedtests$1

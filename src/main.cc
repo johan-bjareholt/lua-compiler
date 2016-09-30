@@ -35,8 +35,11 @@ enum OUTPUT_MODES {
 int input_mode = INPUT_STDIN;
 std::string input_filename = "";
 
-int output_mode = OUTPUT_STDOUT;
-std::string output_filename = "";
+//int output_mode = OUTPUT_STDOUT;
+//std::string output_filename = "";
+
+int output_mode = OUTPUT_FILE;
+std::string output_filename = "target.c";
 
 void parse_flags(int argc, char** argv);
 
@@ -66,7 +69,7 @@ int main(int argc, char** argv){
         ss.str("");
     }
     
-    std::ofstream outDotFile("graph.dot");
+    std::ofstream outDotFile("tree.dot");
     std::list<BBlock*> outdotblocks;
     outdotblocks.push_back(start);
     for (auto block : funcdefs){
