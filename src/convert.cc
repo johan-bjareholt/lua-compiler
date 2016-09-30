@@ -196,6 +196,8 @@ std::string outBlock(BBlock& block, std::stringstream& ss, std::set<std::string>
     return block.label;
 }
 
+static std::map<std::string, int> args;
+
 void outFunctionBlock(std::string funcname, BBlock& block, std::stringstream& ss, std::set<std::string>& outputSymbols, std::set<std::string>& inputSymbols){
     //std::cout << "Translating function " << funcname << std::endl;
     ss << std::endl;
@@ -204,15 +206,18 @@ void outFunctionBlock(std::string funcname, BBlock& block, std::stringstream& ss
     /*for (ThreeAd& op : block.instructions){
         convertThreeAd(op, ss, outputSymbols, inputSymbols);
     }*/
-    std::list<ThreeAd*> args;
+    args.clear();
+    int i=0;
     for(auto iter = block.instructions.begin(); iter->op=='a' && iter!=block.instructions.end(); iter++){
         ThreeAd& arg = *iter;
-        args.push_back(&arg);
+        args.insert(std::make_pair(arg.lhs, i));
+        i++;
     }
 	outBlock(block, ss, outputSymbols, inputSymbols, false);
     for (auto arg: args){
         
     }
+    args.clear();
 }
 
 bool is_digits(const std::string &str)
@@ -222,7 +227,11 @@ bool is_digits(const std::string &str)
 
 
 void formatSymbol(std::string& val, std::set<std::string>& symbolTable){
-    if (is_digits(val)){
+    auto arg = args.find(val);
+    if (arg != args.end()){
+        val = "-8(%%rsp)";
+    }
+    else if (is_digits(val)){
         std::stringstream tempss;
         tempss << "$" << val;
         val = tempss.str();
@@ -317,7 +326,8 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::set<std::string>& o
             formatSymbol(lhs, inputSymbols);
 
 			ss << pre_in << "movq " << rhs << ", %%rax" << post_in;
-			ss << pre_in << "cmp "  << lhs << ", %%rax" << post_in;
+			ss << pre_in << "movq " << lhs << ", %%rbx" << post_in;
+			ss << pre_in << "cmp "  << "%%rbx, %%rax" << post_in;
 			}
 			break;
 		// Copy
@@ -334,20 +344,15 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::set<std::string>& o
         case 'a':
             // TODO: Support for multiple arguments
             formatSymbol(lhs, inputSymbols);
-            // FIXME: Fix hardcoding
-            ss << pre_in << "movq " << lhs << ", %%rbx" << post_in;
-            ss << pre_in << "movq %%rbx, -8(%%rbp)" << post_in;
-            
-            ss << pre_in << "movq " << "%%rdi, " << lhs << post_in;
+            // Push to stack
+            ss << pre_in << "movq %%rdi, " << lhs << post_in;
             break;
         // Function Return
 		case 'r':
             {
             formatSymbol(lhs, inputSymbols);
 			ss << pre_in << "movq " << lhs << ", " << "%%rax" << post_in;
-            // FIXME: Horrible workaround
-            ss << pre_in << "movq %[n], %%rbx" << post_in;
-            ss << pre_in << "movq %%rbx, -8(%%rbp)" << post_in;
+            
             ss << pre_in << "addq " << "$16, %%rsp" << post_in;
             ss << pre_in << "ret" << post_in;
             }
