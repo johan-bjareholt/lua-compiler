@@ -9,7 +9,7 @@
 
 #include "ir.h"
 
-std::vector<BBlock*> funcdefs;
+std::map<std::string, BBlock*> funcdefs;
 
 using namespace std;
 
@@ -33,20 +33,30 @@ void BBlock::dump(std::stringstream& ss)
     ss << "False: " << falseExit << endl;
 }
 
-static std::list<BBlock*> traversed_blocks;
+static std::set<BBlock*> traversed_blocks;
 
-void BBlock::dumpDot(std::stringstream& ss, bool start){
-    // Start
-    if (start == true){
-        ss << "digraph {" << std::endl;
-        ss << "size=\"6,6\";" << std::endl;
-        ss << "node [color=lightblue, style=filled];" << std::endl;
+void dumpDot(std::stringstream& ss, std::list<BBlock*> startblocks){
+    traversed_blocks = std::set<BBlock*>();
+    ss << "digraph {" << std::endl;
+    ss << "size=\"6,6\";" << std::endl;
+    ss << "node [color=lightblue, style=filled];" << std::endl;
+
+    for (BBlock* block : startblocks){
+        block->dumpDot(ss);
     }
-    traversed_blocks.push_back(this);
+    
+    ss << "}" << std::endl;
+}
+
+void BBlock::dumpDot(std::stringstream& ss){
+    traversed_blocks.insert(this);
     // Def self
     ss  << '"' << this << '"' << std::endl;
     // Set self string
-    ss  << "[" << "label=\"" << this << "" << std::endl;
+    if (this->label.empty())
+        ss  << "[" << "label=\"" << this << "" << std::endl;
+    else
+        ss  << "[" << "label=\"" << this->label << "" << std::endl;
     std::stringstream ss_code;
     for(auto i : instructions){
         i.dump(ss_code);
@@ -68,17 +78,12 @@ void BBlock::dumpDot(std::stringstream& ss, bool start){
     if (falseExit)
         ss  << "    \"" << this << "\" -> \"" << falseExit << "\";"<< std::endl;
     // Dumpdot subs
-    bool trueExitFound = (std::find(traversed_blocks.begin(), traversed_blocks.end(), trueExit) != traversed_blocks.end());
+    bool trueExitFound = traversed_blocks.find(trueExit) != traversed_blocks.end();
     if (trueExit && !trueExitFound)
-        trueExit->dumpDot(ss, false);
-    bool falseExitFound = (std::find(traversed_blocks.begin(), traversed_blocks.end(), falseExit) != traversed_blocks.end());
+        trueExit->dumpDot(ss);
+    bool falseExitFound = traversed_blocks.find(falseExit) != traversed_blocks.end();
     if (falseExit && !falseExitFound)
-        falseExit->dumpDot(ss, false);
-
-    // End
-    if (start == true){
-        ss << "}" << std::endl;
-    }
+        falseExit->dumpDot(ss);
 }
 
 
@@ -106,7 +111,7 @@ void Expression::dump(std::stringstream& ss, int depth)
         case 'C':  ss << value << endl; break;
 	    case 'S':  ss << name  << endl; break;
 	    case 'f':  ss << name  << endl; break;
-	    default: ss << "bad expression: " << kind << endl; break;
+        default: std::cout << "ERROR: bad expression kind '" << kind << '\''<< endl; ss << "bad expression" << endl; break;
     }
     if(left!=NULL)
         left->dump(ss, depth+1);
@@ -267,25 +272,25 @@ Statement *Repeat(Expression* expression, Statement* body){
 	return repeat;
 }
 
-Statement *FunctionDef(std::string& name, std::list<Expression*> args, Statement* body){
+Statement *FunctionDef(std::string& name, std::vector<Expression*> args, Statement* body){
 	Statement* result = new Statement('F');
-	Expression* nameExp = Constant(0);
-	nameExp->name = name;
+	Expression* nameExp = String(name);
 	result->expressions.push_back(nameExp);
-	// TODO: Add args support
-	result->children.push_back(Seq({}));
+	// TODO: Add proper args support
+    Statement* argscontainer = new Statement('E');
+    argscontainer->expressions = args;
+	result->children.push_back(argscontainer);
 	result->children.push_back(body);
 	return result;
 }
 
-/*
-Statement *FunctionCall(Expression* funcname, Statement* args){
-    Statement *result = new Statement('f');
-    result->expressions.push_back(funcname);
-    result->children.push_back(args);
+Statement *Return(std::list<Expression*> retvals){
+    Statement *result = new Statement('r');
+    for (Expression* exp : retvals){
+        result->expressions.push_back(exp);
+    }
     return result;
 }
-*/
 
 
 
@@ -398,11 +403,13 @@ void convertIf(Statement *in, BBlock **current)
 
     // Create true and false block
     BBlock* trueBlock = new BBlock();
-    convertStatement(in->children.at(0), &trueBlock);
+    BBlock* trueBlockPtr = trueBlock;
+    convertStatement(in->children.at(0), &trueBlockPtr);
     (*current)->trueExit = trueBlock;
 
     BBlock* falseBlock = new BBlock();
-    convertStatement(in->children.at(1), &falseBlock);
+    BBlock* falseBlockPtr = falseBlock;
+    convertStatement(in->children.at(1), &falseBlockPtr);
     (*current)->falseExit = falseBlock;
 
     // Create next block
@@ -415,32 +422,21 @@ void convertIf(Statement *in, BBlock **current)
 
 void convertFuncDef(Statement* in, BBlock *current){
 	std::string name = in->expressions.at(0)->name;
+    //std::cout << "Defining function " << name << std::endl;
+	Statement* args = in->children.at(0);
 	Statement* body = in->children.at(1);
 	BBlock* bodyBlock = new BBlock();
-	convertStatement(body, &bodyBlock);
-    funcdefs.push_back(bodyBlock);
-}
-/*
-void convertFuncCall(Statement* in, BBlock *current){
-    // Set args
-	Statement* args = in->children.at(0);
-    int argc = 0;
-    for (auto arg: args->expressions){
-        std::stringstream ss;
-        ss << "_a" << argc;
-        std::string name = ss.str();
-        std::string val = convert(arg, current);
-        ThreeAd ta = ThreeAd(name,'c',name,val);
-        current->instructions.push_back(ta);
-        argc++;
+    BBlock* currblock = bodyBlock;
+    // TODO: Fix support for multiple arguments
+    if (args->expressions.size() > 0){
+        Expression* exp1 = args->expressions.at(0);
+        ThreeAd ta (name, 'a', exp1->name, exp1->name);
+        bodyBlock->instructions.push_back(ta);
     }
-	// Call
-    std::string name = in->expressions.at(0)->name;
-    std::string retname = newName();
-    ThreeAd call = ThreeAd(retname,'f',name,name);
-    current->instructions.push_back(call);
+	convertStatement(body, &currblock);
+
+    funcdefs.insert(std::make_pair(name, bodyBlock));
 }
-*/
 
 void convertSeq(Statement *in, BBlock **current)
 {
@@ -504,6 +500,18 @@ void convertExpressions(Statement *in, BBlock *current){
         convert(e,current);
 }
 
+void convertReturn(Statement *in, BBlock *current){
+    // TODO: Support for multiple return values
+    Expression* retexp = in->expressions.at(0);
+    std::string retval = convert(retexp, current);
+    ThreeAd ta = ThreeAd("_r",'r',retval, retval);
+    current->instructions.push_back(ta);
+    
+    /*for(Expression* exp: in->expressions){
+        convert(exp, current);
+    }*/
+}
+
 // Despatch point
 void convertStatement(Statement *in, BBlock **current)
 {
@@ -517,6 +525,9 @@ void convertStatement(Statement *in, BBlock **current)
             break;
         case 'E':
             convertExpressions(in, *current); // Does not update current
+            break;
+        case 'r':
+            convertReturn(in,*current); // Does not update current
             break;
         case 'L':
             convertLoop(in,current);

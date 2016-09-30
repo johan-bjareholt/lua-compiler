@@ -27,6 +27,8 @@ public:
     void dump(std::stringstream& ss);
 };
 
+void dumpDot(std::stringstream& ss, std::list<BBlock*>);
+
 class BBlock
 {
     public:
@@ -38,7 +40,7 @@ class BBlock
     BBlock();
 
     void dump(std::stringstream& ss); 
-    void dumpDot(std::stringstream& ss, bool start=true);
+    void dumpDot(std::stringstream& ss);
 };
 
 
@@ -109,9 +111,9 @@ Statement *While(Expression* expression, Statement* body);
 
 Statement *Repeat(Expression* expression, Statement* body);
 
-Statement *FunctionDef(std::string& name, std::list<Expression*> args, Statement* body);
+Statement *FunctionDef(std::string& name, std::vector<Expression*> args, Statement* body);
 
-//Statement *FunctionCall(Expression* funcname, Statement* args);
+Statement *Return(std::list<Expression*>);
 
 
 

@@ -58,9 +58,33 @@ int main(int argc, char** argv){
 	convertStatement(root, &current);
     if (debug_cfg){
 	    dumpCFG(ss, start);
+        for (auto block : funcdefs){
+            ss << "Function " << block.first << std::endl;
+            dumpCFG(ss, block.second);
+        }
         std::cout << ss.str();
         ss.str("");
     }
+    
+    std::ofstream outDotFile("graph.dot");
+    std::list<BBlock*> outdotblocks;
+    outdotblocks.push_back(start);
+    for (auto block : funcdefs){
+        outdotblocks.push_back(block.second);
+    }
+    dumpDot(ss, outdotblocks);
+    outDotFile << ss.str();
+    /*start->dumpDot(ss);
+    outDotFile << ss.str();
+    for (auto func : funcdefs){
+        ss.str("");
+        std::cout << "outDotFunc:" << func->label << std::endl;
+        func->dumpDot(ss);
+        outDotFile << ss.str();
+    }*/
+
+    outDotFile.close();
+    ss.str("");
 	
     outMainBlock(ss, *start);
     if (output_mode == OUTPUT_FILE){
@@ -71,12 +95,6 @@ int main(int argc, char** argv){
     else if (output_mode == OUTPUT_STDOUT){
         std::cout << ss.str();
     }
-    ss.str("");
-    
-    std::ofstream outDotFile("graph.dot");
-    start->dumpDot(ss);
-    outDotFile << ss.str();
-    outDotFile.close();
     ss.str("");
 
 	

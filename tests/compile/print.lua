@@ -1,2 +1,6 @@
-print(1)
-io.write("test text")
+io.write("1")
+io.write(",2,")
+io.write(3)
+io.write("\n")
+print("test text")
+print(10)

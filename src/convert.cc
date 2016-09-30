@@ -48,6 +48,7 @@ std::string newLabel(){
 
 
 
+
 void outMainBlock(std::stringstream& ss, BBlock& startblock){
     std::stringstream headss;
     std::stringstream mainss;
@@ -71,15 +72,14 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
 
 	bodyss << "    asm (" << std::endl;
     bodyss << "    // main" << std::endl;
-	outBlock(startblock, bodyss, outputSymbols, inputSymbols);
-    //outputSymbols.insert("intformat");
-    /* TODO: To be properly implemented
-    body << "// funcdefs" << std::endl;
-    for (auto funcdef: funcdefs){
-        outBlock(*funcdef, body, outputSymbols, inputSymbols);
-		body << pre_in << "ret" << post_in;
+    // Output global
+	outBlock(startblock, bodyss, outputSymbols, inputSymbols, true);
+    // Output functions
+    for (auto funcentry : funcdefs){
+        std::string funcname = funcentry.first;
+        BBlock* funcblock = funcentry.second;
+        outFunctionBlock(funcname, *funcblock, bodyss, outputSymbols, inputSymbols);
     }
-    */
     bodyss << std::endl;
     bodyss << pre_in << "label_end:" << post_in;
     
@@ -141,7 +141,7 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
     ss << mainss.str();
 }
 
-std::string outBlock(BBlock& block, std::stringstream& ss, std::set<std::string>& outputSymbols, std::set<std::string>& inputSymbols){
+std::string outBlock(BBlock& block, std::stringstream& ss, std::set<std::string>& outputSymbols, std::set<std::string>& inputSymbols, bool exit){
     if (!block.label.empty()){
         return block.label;
     }
@@ -159,7 +159,7 @@ std::string outBlock(BBlock& block, std::stringstream& ss, std::set<std::string>
         std::stringstream trueblock;
         std::string bname;
         if (block.falseExit != nullptr && last_op){
-            bname = outBlock(*block.falseExit, falseblock, outputSymbols, inputSymbols);
+            bname = outBlock(*block.falseExit, falseblock, outputSymbols, inputSymbols, exit);
             switch (last_op->op){
                 case '=':
                     ss << pre_in << "jne " << bname << post_in;
@@ -176,11 +176,15 @@ std::string outBlock(BBlock& block, std::stringstream& ss, std::set<std::string>
             }
         }
         if (block.trueExit != nullptr){
-            bname = outBlock(*block.trueExit, trueblock, outputSymbols, inputSymbols);
+            bname = outBlock(*block.trueExit, trueblock, outputSymbols, inputSymbols, exit);
             ss << pre_in << "jmp " << bname << post_in;
         }
-        else {
+        else if (exit){
             ss << pre_in << "jmp label_end" << post_in;
+        }
+        else {
+            ss << pre_in << "popq %%rsp" << post_in;
+            ss << pre_in << "ret" << post_in;
         }
         if (block.falseExit != nullptr)
             ss << falseblock.str();
@@ -189,6 +193,26 @@ std::string outBlock(BBlock& block, std::stringstream& ss, std::set<std::string>
 
     }
     return block.label;
+}
+
+void outFunctionBlock(std::string funcname, BBlock& block, std::stringstream& ss, std::set<std::string>& outputSymbols, std::set<std::string>& inputSymbols){
+    //std::cout << "Translating function " << funcname << std::endl;
+    ss << std::endl;
+    ss << pre_in << funcname << ":" << post_in;
+    ss << pre_in << "pushq " << "%%rsp" << post_in;
+    ss << pre_in << "subq " << "$16, %%rsp" << post_in;
+    /*for (ThreeAd& op : block.instructions){
+        convertThreeAd(op, ss, outputSymbols, inputSymbols);
+    }*/
+    std::list<ThreeAd*> args;
+    for(auto iter = block.instructions.begin(); iter->op=='a' && iter!=block.instructions.end(); iter++){
+        ThreeAd& arg = *iter;
+        args.push_back(&arg);
+    }
+	outBlock(block, ss, outputSymbols, inputSymbols, false);
+    for (auto arg: args){
+        
+    }
 }
 
 bool is_digits(const std::string &str)
@@ -306,13 +330,36 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::set<std::string>& o
 			ss << pre_in << "movq " << "%%rax" << ", " << lhs << post_in;
             }
 			break;
+        // Function argument
+        case 'a':
+            // TODO: Support for multiple arguments
+            formatSymbol(lhs, inputSymbols);
+            // FIXME: Fix hardcoding
+            ss << pre_in << "movq " << lhs << ", %%rbx" << post_in;
+            ss << pre_in << "movq %%rbx, -8(%%rbp)" << post_in;
+            
+            ss << pre_in << "movq " << "%%rdi, " << lhs << post_in;
+            break;
+        // Function Return
+		case 'r':
+            {
+            formatSymbol(lhs, inputSymbols);
+			ss << pre_in << "movq " << lhs << ", " << "%%rax" << post_in;
+            // FIXME: Horrible workaround
+            ss << pre_in << "movq %[n], %%rbx" << post_in;
+            ss << pre_in << "movq %%rbx, -8(%%rbp)" << post_in;
+            ss << pre_in << "subq " << "$16, %%rsp" << post_in;
+            ss << pre_in << "popq %%rsp" << post_in;
+            ss << pre_in << "ret" << post_in;
+            }
+			break;
 		// Call function
 		case 'f':
             {
             // FIXME: Ugly type check and convertion
             std::string funcname = lhs;
             auto arginfo = vars2.find(rhs);
-            if ((funcname == "print" || funcname == "io_write") && (arginfo != vars2.end() && (*arginfo).second.first == VT_INT)){
+            if ((funcname == "print" || funcname == "io_write") && (is_digits(rhs) || (arginfo != vars2.end() && (*arginfo).second.first == VT_INT))){
                 if (lhs == "print")
                     funcname = "print_i";
                 else

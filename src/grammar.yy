@@ -173,13 +173,12 @@ optsemi	: SEMICOLON {}
 
 laststat: RETURN explist optsemi {
 			// TODO: Implement
-			$$ = new Statement('S');
-			$$->expressions.push_back(Constant(0));
+            $$ = Return($2);
 		}
 		| RETURN optsemi {
-			//$$ = Node("return","empty");
-			$$ = new Statement('S');
-			$$->expressions.push_back(Constant(0));
+            std::list<Expression*> retvals;
+            retvals.push_back(Constant(0));
+			$$ = Return(retvals);
 		}
 		| BREAK optsemi {
 			//$$ = Node("return","break");
@@ -217,10 +216,12 @@ stat	: varlist ASSIGN explist {
 			}
 		}
 		| FUNCTION funcname funcbody {
-			$$ = FunctionDef($2, {}, $3);
+			$$ = FunctionDef($2, $3->expressions, $3->children.at(0));
+            $3->expressions.clear();
 		}
 		| LOCAL FUNCTION NAME funcbody {
-			$$ = FunctionDef($3, {}, $4);
+			$$ = FunctionDef($3, $4->expressions, $4->children.at(0));
+            $4->expressions.clear();
 		}
 		| functioncall {
 			$$ = new Statement('E');
@@ -446,7 +447,8 @@ funcbody: PARANTHESES_L parlist PARANTHESES_R block END {
 			//$$ = Node("funcbody","");
 			//$$.children.push_back($2);
 			//$$.children.push_back($4);
-			$$ = $4;
+            $$ = $4;
+			Statement* args = $4;
 			for (Expression* exp : $2){
 				$$->expressions.push_back(exp);
 			}
@@ -455,7 +457,7 @@ funcbody: PARANTHESES_L parlist PARANTHESES_R block END {
 			//$$ = Node("funcbody","");
 			//$$.children.push_back(Node("parlist","empty"));
 			//$$.children.push_back($3);
-			$$ = $3;
+            $$ = $3;
 		}
 		;
 
