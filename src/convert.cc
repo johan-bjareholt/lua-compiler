@@ -13,6 +13,7 @@ enum VAR_TYPE {
     VT_LABEL
 };
 
+
 static std::map<std::string, std::pair<int, std::string>> vars2;
 
 static void addVar(std::string name, int type, std::string value){
@@ -183,7 +184,7 @@ std::string outBlock(BBlock& block, std::stringstream& ss, std::set<std::string>
             ss << pre_in << "jmp label_end" << post_in;
         }
         else {
-            ss << pre_in << "popq %%rsp" << post_in;
+            ss << pre_in << "addq " << "$16, %%rsp" << post_in;
             ss << pre_in << "ret" << post_in;
         }
         if (block.falseExit != nullptr)
@@ -199,7 +200,6 @@ void outFunctionBlock(std::string funcname, BBlock& block, std::stringstream& ss
     //std::cout << "Translating function " << funcname << std::endl;
     ss << std::endl;
     ss << pre_in << funcname << ":" << post_in;
-    ss << pre_in << "pushq " << "%%rsp" << post_in;
     ss << pre_in << "subq " << "$16, %%rsp" << post_in;
     /*for (ThreeAd& op : block.instructions){
         convertThreeAd(op, ss, outputSymbols, inputSymbols);
@@ -348,8 +348,7 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::set<std::string>& o
             // FIXME: Horrible workaround
             ss << pre_in << "movq %[n], %%rbx" << post_in;
             ss << pre_in << "movq %%rbx, -8(%%rbp)" << post_in;
-            ss << pre_in << "subq " << "$16, %%rsp" << post_in;
-            ss << pre_in << "popq %%rsp" << post_in;
+            ss << pre_in << "addq " << "$16, %%rsp" << post_in;
             ss << pre_in << "ret" << post_in;
             }
 			break;

@@ -35,8 +35,7 @@ ctest "tests/compile/arithmetic.lua"
 ctest "tests/compile/basic.lua"
 ctest "tests/compile/if.lua"
 ctest "tests/compile/print.lua"
-# Broken
-#ctest "tests/compile/functions.lua"
+ctest "tests/compile/functions.lua"
 
 ctest "tests/ass/test1.lua"
 ctest "tests/ass/test2.lua"
