@@ -41,62 +41,52 @@ std::string output_filename = "";
 void parse_flags(int argc, char** argv);
 
 int main(int argc, char** argv){
-    std::stringstream ss;
 	parse_flags(argc, argv);
 	
+    // Grammar
     yy::parser parser;
 	parser.parse();
-	
-    root->dump(ss);
     if (debug_grammar){
+        std::stringstream ss;
+        root->dump(ss);
         std::cout << ss.str();
     }
-    ss.str("");
 
+    // IR
 	BBlock* start = new BBlock();
 	BBlock* current = start;
 	convertStatement(root, &current);
     if (debug_cfg){
+        std::stringstream ss;
 	    dumpCFG(ss, start);
         for (auto block : funcdefs){
             ss << "Function " << block.first << std::endl;
             dumpCFG(ss, block.second);
         }
         std::cout << ss.str();
-        ss.str("");
     }
-    
+   
+    // CFG dot graph
     std::ofstream outDotFile("graph.dot");
     std::list<BBlock*> outdotblocks;
     outdotblocks.push_back(start);
     for (auto block : funcdefs){
         outdotblocks.push_back(block.second);
     }
-    dumpDot(ss, outdotblocks);
-    outDotFile << ss.str();
-    /*start->dumpDot(ss);
-    outDotFile << ss.str();
-    for (auto func : funcdefs){
-        ss.str("");
-        std::cout << "outDotFunc:" << func->label << std::endl;
-        func->dumpDot(ss);
-        outDotFile << ss.str();
-    }*/
-
+    dumpDot(outDotFile, outdotblocks);
     outDotFile.close();
-    ss.str("");
 	
-    outMainBlock(ss, *start);
+    // Target output
     if (output_mode == OUTPUT_FILE){
         std::ofstream outFile(output_filename);
-        outFile << ss.str();
+        outMainBlock(outFile, *start);
         outFile.close();
     }
     else if (output_mode == OUTPUT_STDOUT){
+        std::stringstream ss;
+        outMainBlock(ss, *start);
         std::cout << ss.str();
     }
-    ss.str("");
-
 	
 	return 0;
 }

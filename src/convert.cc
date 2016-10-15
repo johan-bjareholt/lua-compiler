@@ -66,7 +66,7 @@ std::string newLabel(){
 
 
 
-void outMainBlock(std::stringstream& ss, BBlock& startblock){
+void outMainBlock(std::ostream& ss, BBlock& startblock){
     std::stringstream headss;
     std::stringstream mainss;
     std::stringstream bodyss;
@@ -167,7 +167,7 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
     ss << mainss.str();
 }
 
-std::string outBlock(BBlock& block, std::stringstream& ss, std::set<std::string>& outputSymbols, std::set<std::string>& inputSymbols, bool exit){
+std::string outBlock(BBlock& block, std::ostream& ss, std::set<std::string>& outputSymbols, std::set<std::string>& inputSymbols, bool exit){
     if (!block.label.empty()){
         return block.label;
     }
@@ -223,7 +223,7 @@ std::string outBlock(BBlock& block, std::stringstream& ss, std::set<std::string>
 
 static std::map<std::string, int> args;
 
-void outFunctionBlock(std::string funcname, BBlock& block, std::stringstream& ss, std::set<std::string>& outputSymbols, std::set<std::string>& inputSymbols){
+void outFunctionBlock(std::string funcname, BBlock& block, std::ostream& ss, std::set<std::string>& outputSymbols, std::set<std::string>& inputSymbols){
     //std::cout << "Translating function " << funcname << std::endl;
     addVar(funcname, VT_FUNCTION, "");
     ss << std::endl;
@@ -284,7 +284,7 @@ void formatSymbol(std::string& val, std::set<std::string>& symbolTable){
 	}
 }
 
-void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::set<std::string>& outputSymbols, std::set<std::string>& inputSymbols){
+void convertThreeAd(ThreeAd& op, std::ostream& ss, std::set<std::string>& outputSymbols, std::set<std::string>& inputSymbols){
 	regVar(op.result);
 	
 	std::string lhs = op.lhs;
