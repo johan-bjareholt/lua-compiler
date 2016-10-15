@@ -75,7 +75,7 @@ void outMainBlock(std::ostream& ss, BBlock& startblock){
     headss << "// Standard functions" << std::endl;
 	headss << "#include <stdlib.h>" << std::endl;
 	headss << "#include <stdio.h>" << std::endl;
-    headss << "long io_write(const char* msg){printf(msg); return 0;}" << std::endl;
+    headss << "long io_write(const char* msg){printf(\"%s\", msg); return 0;}" << std::endl;
     headss << "long io_write_i(long num){ printf(\"%ld\", num); return 0;}" << std::endl;
     headss << "long print(const char* msg){ printf(\"%s\\n\", msg); return 0;}" << std::endl;
     headss << "long print_i(long num){ printf(\"%ld\\n\", num);; return 0;}" << std::endl;

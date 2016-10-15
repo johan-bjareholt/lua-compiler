@@ -7,9 +7,10 @@
 testpass=0
 testcount=0
 
-GCC=gcc
-#GCC=gcc-5
-#GCC=gcc-4.9
+CC=gcc
+#CC=gcc-5
+#CC=gcc-4.9
+#CC=clang
 
 function ctest() {
 	testcount=$(($testcount+1))
@@ -19,7 +20,7 @@ function ctest() {
 		echo "Translation error: $1"
 		failedtests=$failedtests$1
     else
-        $GCC test.c
+        $CC test.c
         if [ $? -ne 0 ]; then
             echo "Compilation error: $1"
             failedtests=$failedtests$1

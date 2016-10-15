@@ -353,7 +353,7 @@ void emitPass(Expression *tree, map<Expression*,string> &nameMap, BBlock *out)
         );
         out->instructions.push_back(*ta);
     }
-    else if (tree->kind = 'f' && tree->op == 'f'){
+    else if (tree->kind == 'f' && tree->op == 'f'){
         for (Expression* exp : tree->subexp){
             emitPass(exp, nameMap, out);
         }

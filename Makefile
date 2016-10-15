@@ -1,3 +1,6 @@
+CXX=g++
+#CXX=clang++
+
 NAME=lua
 MAIN=src/main.cc
 OBJ=obj/ir.o obj/convert.o obj/grammar.tab.o obj/lex.yy.c
