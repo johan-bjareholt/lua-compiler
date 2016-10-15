@@ -9,14 +9,29 @@ static const std::string post_in = "\\n\"\n";
 enum VAR_TYPE {
     VT_STRING,
     VT_INT,
+    VT_POINTER,
     VT_FUNCTION,
-    VT_LABEL
+    VT_LABEL,
+    VT_UNKNOWN
 };
 
 
 static std::map<std::string, std::pair<int, std::string>> vars2;
 
+static std::pair<int, std::string>* getVar(std::string name){
+    auto result = vars2.find(name);
+    if (result == vars2.end())
+        return nullptr;
+    else
+        return &(*result).second;
+}
+
 static void addVar(std::string name, int type, std::string value){
+    if (getVar(name) != nullptr){
+        if (getVar(name)->first != VT_UNKNOWN)
+            std::cout << "overriding value of " << name << "!" << std::endl;
+        vars2.erase(name);
+    }
     std::pair<int, std::string> var(type, value);
     std::pair<std::string, std::pair<int, std::string>> entry(name, var);
     vars2.insert(entry);
@@ -34,7 +49,8 @@ static std::string newString(std::string str){
 
 static int varc = 0;
 static void regVar(std::string str){
-    addVar(str, VT_INT, "");
+    if (getVar(str) == nullptr)
+        addVar(str, VT_UNKNOWN, "");
 }
 
 static int labelcount = 0;
@@ -85,17 +101,24 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
     bodyss << pre_in << "label_end:" << post_in;
     
     // Define storage variables
+    headss << std::endl;
+    headss << "// Variables" << std::endl;
     for (auto var : vars2){
         std::string name = var.first;
         std::string val = var.second.second;
         int type = var.second.first;
         switch (type){
             case VT_STRING:
-                mainss << "    const char* " << name << " = " << val << ";"<< std::endl;
+                headss << "const char* " << name << " = " << val << ";"<< std::endl;
                 break;
             case VT_INT:
-	            mainss << "    long " << name << ";" << std::endl;
+            case VT_UNKNOWN:
+	            headss << "long " << name << ";" << std::endl;
                 break;
+            case VT_POINTER:
+                headss << "void* " << name << ";" << std::endl;
+                break;
+            case VT_FUNCTION:
             case VT_LABEL:
                 break;
             default:
@@ -104,6 +127,7 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
                 break;
         }
     }
+    headss << std::endl;
 
     // Strings
     //mainss << "    // Strings decl" << std::endl;
@@ -136,6 +160,7 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
     mainss << "      \"cc\", \"rax\", \"rbx\", \"rcx\", \"rdx\", \"rsi\", \"rdi\", \"rsp\"" << std::endl;
     //mainss << "      ,\"r8\", \"r9\", \"r10\", \"r11\", \"r12\", \"r13\", \"r14\", \"r15\"" << std::endl;
 	mainss << "    );" << std::endl;
+	mainss << "    return 0;" << std::endl;
 	mainss << "}" << std::endl;
 
     ss << headss.str();
@@ -200,6 +225,7 @@ static std::map<std::string, int> args;
 
 void outFunctionBlock(std::string funcname, BBlock& block, std::stringstream& ss, std::set<std::string>& outputSymbols, std::set<std::string>& inputSymbols){
     //std::cout << "Translating function " << funcname << std::endl;
+    addVar(funcname, VT_FUNCTION, "");
     ss << std::endl;
     ss << pre_in << funcname << ":" << post_in;
     ss << pre_in << "subq " << "$16, %%rsp" << post_in;
@@ -225,6 +251,15 @@ bool is_digits(const std::string &str)
     return std::all_of(str.begin(), str.end(), ::isdigit);
 }
 
+bool is_string(const std::string& str){
+    return (str.front() == '"' && str.back() == '"');
+}
+
+void add_brackets(std::string& str){
+    std::stringstream tmpss;
+    tmpss << "%[" << str << "]";
+    str = tmpss.str();
+}
 
 void formatSymbol(std::string& val, std::set<std::string>& symbolTable){
     auto arg = args.find(val);
@@ -237,7 +272,7 @@ void formatSymbol(std::string& val, std::set<std::string>& symbolTable){
         val = tempss.str();
 	}
 	else {
-        if (val[0] == '"'){
+        if (is_string(val)){
             symbolTable.erase(val);
             val = newString(val);
         }
@@ -245,9 +280,7 @@ void formatSymbol(std::string& val, std::set<std::string>& symbolTable){
             regVar(val);
         }
 	    symbolTable.insert(val);
-        std::stringstream tempss;
-		tempss << "\%[" << val << "]";
-		val = tempss.str();
+        add_brackets(val);
 	}
 }
 
@@ -333,11 +366,24 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::set<std::string>& o
 		// Copy
 		case 'c':
             {
-            formatSymbol(rhs, inputSymbols);
-            formatSymbol(lhs, outputSymbols);
-
-			ss << pre_in << "movq " << rhs << ", " << "%%rax" << post_in;
-			ss << pre_in << "movq " << "%%rax" << ", " << lhs << post_in;
+            if (is_string(rhs)){
+                //std::cout << "test1: " << lhs << "," << rhs << std::endl;
+                formatSymbol(rhs, inputSymbols);
+                addVar(lhs, VT_POINTER, "");
+                add_brackets(lhs);
+            }
+            else if (is_digits(rhs)){
+                formatSymbol(lhs, inputSymbols);
+                std::stringstream tempss;
+                tempss << "$" << rhs;
+                rhs = tempss.str();
+            }
+            else {
+                formatSymbol(lhs, inputSymbols);
+                formatSymbol(rhs, inputSymbols);
+            }
+            ss << pre_in << "movq " << rhs << ", " << "%%rax" << post_in;
+            ss << pre_in << "movq " << "%%rax" << ", " << lhs << post_in;
             }
 			break;
         // Function argument
@@ -362,14 +408,28 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::set<std::string>& o
             {
             // FIXME: Ugly type check and convertion
             std::string funcname = lhs;
-            auto arginfo = vars2.find(rhs);
-            if ((funcname == "print" || funcname == "io_write") && (is_digits(rhs) || (arginfo != vars2.end() && (*arginfo).second.first == VT_INT))){
-                if (lhs == "print")
-                    funcname = "print_i";
-                else
-                    funcname = "io_write_i";
+            if (funcname == "print" || funcname == "io_write"){
+                bool is_int = false;
+                if (is_digits(rhs))
+                    is_int = true;
+                else {
+                    auto arginfo = vars2.find(rhs);
+                    if (arginfo != vars2.end()){
+                        if ((*arginfo).second.first == VT_INT)
+                            is_int = true;
+                        else if ((*arginfo).second.first == VT_UNKNOWN)
+                            is_int = true;
+                    }
+                }
+                
+                if (is_int){
+                    if (lhs == "print")
+                        funcname = "print_i";
+                    else
+                        funcname = "io_write_i";
+                }
             }
-            
+
             formatSymbol(op.result, outputSymbols);
             formatSymbol(rhs, inputSymbols);
 

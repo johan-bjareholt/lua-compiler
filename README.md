@@ -1,7 +1,7 @@
 Lua Compiler
 ============
 
-A Bison+Flex Lua 5.1 interpreter.
+A Bison+Flex Lua 5.1 compiler.
 
 Has complete grammar support, x86 target however is unfinished.
 
@@ -11,9 +11,9 @@ This is the second assignment in the course DV1465, Compiler Techniques at Bleki
 
 #### Flaws
 
-- Functions can only have max 4 parameters
 - No proper type system
-- Currently only supports single parameter functions
+- Function declarations can only have max 4 parameters
+- Function calls currently only supports one parameter
 - Max 30 operands bug for inline assembly
     - https://gcc.gnu.org/ml/gcc-help/2008-03/msg00109.html
     - http://stackoverflow.com/questions/39753703/how-to-prevent-error-more-than-30-operands-in-asm-with-inline-assesmbly-with
