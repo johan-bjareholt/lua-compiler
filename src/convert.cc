@@ -101,21 +101,24 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
     bodyss << pre_in << "label_end:" << post_in;
     
     // Define storage variables
+    headss << std::endl;
+    headss << "// Variables" << std::endl;
     for (auto var : vars2){
         std::string name = var.first;
         std::string val = var.second.second;
         int type = var.second.first;
         switch (type){
             case VT_STRING:
-                mainss << "    const char* " << name << " = " << val << ";"<< std::endl;
+                headss << "const char* " << name << " = " << val << ";"<< std::endl;
                 break;
             case VT_INT:
             case VT_UNKNOWN:
-	            mainss << "    long " << name << ";" << std::endl;
+	            headss << "long " << name << ";" << std::endl;
                 break;
             case VT_POINTER:
-                mainss << "    void* " << name << ";" << std::endl;
+                headss << "void* " << name << ";" << std::endl;
                 break;
+            case VT_FUNCTION:
             case VT_LABEL:
                 break;
             default:
@@ -124,6 +127,7 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
                 break;
         }
     }
+    headss << std::endl;
 
     // Strings
     //mainss << "    // Strings decl" << std::endl;
@@ -156,6 +160,7 @@ void outMainBlock(std::stringstream& ss, BBlock& startblock){
     mainss << "      \"cc\", \"rax\", \"rbx\", \"rcx\", \"rdx\", \"rsi\", \"rdi\", \"rsp\"" << std::endl;
     //mainss << "      ,\"r8\", \"r9\", \"r10\", \"r11\", \"r12\", \"r13\", \"r14\", \"r15\"" << std::endl;
 	mainss << "    );" << std::endl;
+	mainss << "    return 0;" << std::endl;
 	mainss << "}" << std::endl;
 
     ss << headss.str();
@@ -220,6 +225,7 @@ static std::map<std::string, int> args;
 
 void outFunctionBlock(std::string funcname, BBlock& block, std::stringstream& ss, std::set<std::string>& outputSymbols, std::set<std::string>& inputSymbols){
     //std::cout << "Translating function " << funcname << std::endl;
+    addVar(funcname, VT_FUNCTION, "");
     ss << std::endl;
     ss << pre_in << funcname << ":" << post_in;
     ss << pre_in << "subq " << "$16, %%rsp" << post_in;
@@ -402,16 +408,28 @@ void convertThreeAd(ThreeAd& op, std::stringstream& ss, std::set<std::string>& o
             {
             // FIXME: Ugly type check and convertion
             std::string funcname = lhs;
-            auto arginfo = vars2.find(rhs);
-            if (arginfo != vars2.end())
-                //std::cout << "Type: " << (*arginfo).second.first << "," << (*arginfo).first << "," << (*arginfo).second.second << std::endl;
-            if ((funcname == "print" || funcname == "io_write") && (is_digits(rhs) || (arginfo != vars2.end() && ((*arginfo).second.first == VT_INT) || (*arginfo).second.first == VT_UNKNOWN))){
-                if (lhs == "print")
-                    funcname = "print_i";
-                else
-                    funcname = "io_write_i";
+            if (funcname == "print" || funcname == "io_write"){
+                bool is_int = false;
+                if (is_digits(rhs))
+                    is_int = true;
+                else {
+                    auto arginfo = vars2.find(rhs);
+                    if (arginfo != vars2.end()){
+                        if ((*arginfo).second.first == VT_INT)
+                            is_int = true;
+                        else if ((*arginfo).second.first == VT_UNKNOWN)
+                            is_int = true;
+                    }
+                }
+                
+                if (is_int){
+                    if (lhs == "print")
+                        funcname = "print_i";
+                    else
+                        funcname = "io_write_i";
+                }
             }
-            
+
             formatSymbol(op.result, outputSymbols);
             formatSymbol(rhs, inputSymbols);
 
