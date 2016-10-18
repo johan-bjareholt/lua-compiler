@@ -16,7 +16,7 @@ using namespace std;
 ThreeAd::ThreeAd(string out, char o, string l, string r)
  :  result(out), op(o), lhs(l), rhs(r)      {}
 
-void ThreeAd::dump(std::stringstream& ss)
+void ThreeAd::dump(std::ostream& ss)
 {
     ss  << result << " := " << lhs << " " 
         << op << " " << rhs << endl;
@@ -24,7 +24,7 @@ void ThreeAd::dump(std::stringstream& ss)
 
 BBlock::BBlock() :trueExit(NULL), falseExit(NULL){}
 
-void BBlock::dump(std::stringstream& ss)
+void BBlock::dump(std::ostream& ss)
 {
     ss << "BBlock " << " @ " << this << endl;
     for(auto i : instructions)
@@ -35,7 +35,7 @@ void BBlock::dump(std::stringstream& ss)
 
 static std::set<BBlock*> traversed_blocks;
 
-void dumpDot(std::stringstream& ss, std::list<BBlock*> startblocks){
+void dumpDot(std::ostream& ss, std::list<BBlock*> startblocks){
     traversed_blocks = std::set<BBlock*>();
     ss << "digraph {" << std::endl;
     ss << "size=\"6,6\";" << std::endl;
@@ -48,7 +48,7 @@ void dumpDot(std::stringstream& ss, std::list<BBlock*> startblocks){
     ss << "}" << std::endl;
 }
 
-void BBlock::dumpDot(std::stringstream& ss){
+void BBlock::dumpDot(std::ostream& ss){
     traversed_blocks.insert(this);
     // Def self
     ss  << '"' << this << '"' << std::endl;
@@ -100,7 +100,7 @@ void BBlock::dumpDot(std::stringstream& ss){
 Expression::Expression(char k, Expression *l, Expression *r) 
  : kind(k), left(l), right(r)                {}
 
-void Expression::dump(std::stringstream& ss, int depth)
+void Expression::dump(std::ostream& ss, int depth)
 {
     for(int i=0; i<depth; i++)  
         ss << "  ";
@@ -182,7 +182,7 @@ Expression *Equality(Expression *l, Expression *r)
 
 Statement::Statement(char k)  : kind(k)  {}
 
-void Statement::dump(std::stringstream& ss, int indent)
+void Statement::dump(std::ostream& ss, int indent)
 {
     for(int i=0; i<indent; i++)
         ss << "  ";
@@ -244,9 +244,9 @@ Statement *For(std::string varname, Expression* varval, Expression* boundry, Exp
 	// Loop body (if,code,increment,if etc.)
     char checktoken = '=';
     if (step->value > 0)
-        checktoken = '>';
-    else if (step->value < 0)
         checktoken = '<';
+    else if (step->value < 0)
+        checktoken = '>';
     else {
         std::cout << "Step value in for loop cannot be 0" << std::endl;
         exit(0);
@@ -353,7 +353,7 @@ void emitPass(Expression *tree, map<Expression*,string> &nameMap, BBlock *out)
         );
         out->instructions.push_back(*ta);
     }
-    else if (tree->kind = 'f' && tree->op == 'f'){
+    else if (tree->kind == 'f' && tree->op == 'f'){
         for (Expression* exp : tree->subexp){
             emitPass(exp, nameMap, out);
         }
@@ -548,7 +548,7 @@ void convertStatement(Statement *in, BBlock **current)
 // Iterate through the BBlock nodes in the CFG and dump each one
 // exactly once. This is provided as an example of marking nodes
 // in a graph and implementing traversals.
-void dumpCFG(std::stringstream& ss, BBlock *start)
+void dumpCFG(std::ostream& ss, BBlock *start)
 {
     set<BBlock*> done, todo;
     todo.insert(start);

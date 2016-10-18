@@ -1,4 +1,8 @@
 NAME=comp
+
+CXX=g++
+#CXX=clang++
+
 MAIN=src/main.cc
 OBJ=obj/ir.o obj/convert.o obj/grammar.tab.o obj/lex.yy.c
 CPPFLAGS= --std=c++11 -g -Isrc/ -Iobj/

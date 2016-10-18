@@ -7,9 +7,10 @@
 testpass=0
 testcount=0
 
-GCC=gcc
-#GCC=gcc-5
-#GCC=gcc-4.9
+CC=gcc
+#CC=gcc-5
+#CC=gcc-4.9
+#CC=clang
 
 function ctest() {
 	testcount=$(($testcount+1))
@@ -19,7 +20,7 @@ function ctest() {
 		echo "Translation error: $1"
 		failedtests=$failedtests$1
     else
-        $GCC target.c
+        $CC target.c
         if [ $? -ne 0 ]; then
             echo "Compilation error: $1"
             failedtests=$failedtests$1
@@ -45,8 +46,7 @@ ctest "tests/ass/test1.lua"
 ctest "tests/ass/test2.lua"
 ctest "tests/ass/test3.lua"
 ctest "tests/ass/test4.lua"
-# Broken
-#ctest "tests/ass/test6.lua"
+ctest "tests/ass/test6.lua"
 
 # Will not fix
 #ctest "tests/ass/test5.lua"

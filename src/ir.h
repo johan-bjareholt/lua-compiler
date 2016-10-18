@@ -24,10 +24,10 @@ public:
 
     ThreeAd(string out, char o, string l, string r);
 
-    void dump(std::stringstream& ss);
+    void dump(std::ostream& ss);
 };
 
-void dumpDot(std::stringstream& ss, std::list<BBlock*>);
+void dumpDot(std::ostream& ss, std::list<BBlock*>);
 
 class BBlock
 {
@@ -39,8 +39,8 @@ class BBlock
   
     BBlock();
 
-    void dump(std::stringstream& ss); 
-    void dumpDot(std::stringstream& ss);
+    void dump(std::ostream& ss); 
+    void dumpDot(std::ostream& ss);
 };
 
 
@@ -58,7 +58,7 @@ class Expression
 
     Expression(char k, Expression *l, Expression *r);
 
-    void dump(std::stringstream& ss, int depth=0);
+    void dump(std::ostream& ss, int depth=0);
   
 };
 
@@ -92,7 +92,7 @@ vector<Statement*> children;
 char kind;
     Statement(char k);
 
-    void dump(std::stringstream& ss, int indent=0);
+    void dump(std::ostream& ss, int indent=0);
 };
 
 // "helper" functions rather than separate classes to keep it short.
@@ -144,5 +144,5 @@ void convertStatement(Statement *in, BBlock **current);
 
 
 
-void dumpCFG(std::stringstream& ss, BBlock *start);
+void dumpCFG(std::ostream& ss, BBlock *start);
 
