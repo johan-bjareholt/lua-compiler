@@ -1,21 +1,20 @@
+function plus_one(p)
+    return p+1
+end
+
+function minus_one(p)
+    return p-1
+end
+
 i=0
 print(i)
-function test(p)
-    i=p
-end
 
-test(1)
+i=plus_one(i)
+print(i)
+i=plus_one(i)
 print(i)
 
-test(2)
+i=minus_one(i+2)
 print(i)
-
-n=3
-test(n)
+i=minus_one(i+2)
 print(i)
-
-function test2(q)
-    return 4
-end
-
-print(test2(3))

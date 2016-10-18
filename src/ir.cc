@@ -244,9 +244,9 @@ Statement *For(std::string varname, Expression* varval, Expression* boundry, Exp
 	// Loop body (if,code,increment,if etc.)
     char checktoken = '=';
     if (step->value > 0)
-        checktoken = '>';
-    else if (step->value < 0)
         checktoken = '<';
+    else if (step->value < 0)
+        checktoken = '>';
     else {
         std::cout << "Step value in for loop cannot be 0" << std::endl;
         exit(0);

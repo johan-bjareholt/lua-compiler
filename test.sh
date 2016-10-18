@@ -46,8 +46,7 @@ ctest "tests/ass/test1.lua"
 ctest "tests/ass/test2.lua"
 ctest "tests/ass/test3.lua"
 ctest "tests/ass/test4.lua"
-# Broken
-#ctest "tests/ass/test6.lua"
+ctest "tests/ass/test6.lua"
 
 # Will not fix
 #ctest "tests/ass/test5.lua"
