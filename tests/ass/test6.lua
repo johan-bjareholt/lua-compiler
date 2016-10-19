@@ -7,6 +7,6 @@ function fibonacci(n)
 end
 
 for n = 1, 16 do
-    io.write(fibonacci(n), ", ")
+    print(fibonacci(n))
 end
 io.write("...\n")
